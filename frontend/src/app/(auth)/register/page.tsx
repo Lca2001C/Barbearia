@@ -1,0 +1,100 @@
+'use client'
+
+import { useState, type FormEvent } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
+import { useAuth } from '@/contexts/AuthContext'
+import { BrandLogo } from '@/components/BrandLogo'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Card } from '@/components/ui/Card'
+
+export default function RegisterPage() {
+  const router = useRouter()
+  const { register } = useAuth()
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      await register(name, email, password, phone || undefined)
+      router.push('/')
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || 'Erro ao criar conta. Tente novamente.'
+      toast.error(message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Card className="w-full max-w-md">
+      <div className="mb-8 text-center">
+        <div className="mb-4 flex justify-center">
+          <BrandLogo size="md" standalone />
+        </div>
+        <h1 className="text-2xl font-bold text-white">Criar conta</h1>
+        <p className="mt-1 text-sm text-slate-400">
+          Cadastre-se para agendar seus horários
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Input
+          label="Nome"
+          type="text"
+          placeholder="Seu nome completo"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+        <Input
+          label="E-mail"
+          type="email"
+          placeholder="seu@email.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <Input
+          label="Telefone"
+          type="tel"
+          placeholder="(11) 99999-9999"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+        <Input
+          label="Senha"
+          type="password"
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={6}
+        />
+
+        <Button type="submit" fullWidth loading={loading} className="mt-6">
+          Criar Conta
+        </Button>
+      </form>
+
+      <p className="mt-6 text-center text-sm text-slate-400">
+        Já tem uma conta?{' '}
+        <Link
+          href="/login"
+          className="font-medium text-amber-500 transition-colors hover:text-amber-400"
+        >
+          Entrar
+        </Link>
+      </p>
+    </Card>
+  )
+}

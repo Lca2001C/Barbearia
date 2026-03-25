@@ -1,0 +1,151 @@
+import { prisma } from '../../config/prisma';
+import { AppError } from '../../shared/errors/AppError';
+import { CreateBarberInput, UpdateBarberInput, WorkingHourInput } from './barber.schema';
+
+export async function listBarbers() {
+  return prisma.barber.findMany({
+    where: { active: true },
+    include: {
+      barberServices: { include: { service: true } },
+    },
+    orderBy: { name: 'asc' },
+  });
+}
+
+export async function getBarber(id: string) {
+  const barber = await prisma.barber.findUnique({
+    where: { id },
+    include: {
+      barberServices: { include: { service: true } },
+      workingHours: { orderBy: { dayOfWeek: 'asc' } },
+    },
+  });
+
+  if (!barber) {
+    throw new AppError('Barbeiro não encontrado', 404);
+  }
+
+  return barber;
+}
+
+export async function createBarber(data: CreateBarberInput) {
+  const existing = await prisma.barber.findUnique({ where: { email: data.email } });
+  if (existing) {
+    throw new AppError('Email já cadastrado para outro barbeiro', 409);
+  }
+
+  return prisma.barber.create({ data });
+}
+
+export async function updateBarber(id: string, data: UpdateBarberInput) {
+  const barber = await prisma.barber.findUnique({ where: { id } });
+  if (!barber) {
+    throw new AppError('Barbeiro não encontrado', 404);
+  }
+
+  if (data.email && data.email !== barber.email) {
+    const existing = await prisma.barber.findUnique({ where: { email: data.email } });
+    if (existing) {
+      throw new AppError('Email já cadastrado para outro barbeiro', 409);
+    }
+  }
+
+  return prisma.barber.update({ where: { id }, data });
+}
+
+export async function deleteBarber(id: string) {
+  const barber = await prisma.barber.findUnique({ where: { id } });
+  if (!barber) {
+    throw new AppError('Barbeiro não encontrado', 404);
+  }
+
+  return prisma.barber.update({
+    where: { id },
+    data: { active: false },
+  });
+}
+
+export async function setWorkingHours(barberId: string, hours: WorkingHourInput[]) {
+  const barber = await prisma.barber.findUnique({ where: { id: barberId } });
+  if (!barber) {
+    throw new AppError('Barbeiro não encontrado', 404);
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.workingHour.deleteMany({ where: { barberId } });
+
+    await tx.workingHour.createMany({
+      data: hours.map((h) => ({
+        barberId,
+        dayOfWeek: h.dayOfWeek,
+        startTime: h.startTime,
+        endTime: h.endTime,
+      })),
+    });
+  });
+
+  return prisma.workingHour.findMany({
+    where: { barberId },
+    orderBy: { dayOfWeek: 'asc' },
+  });
+}
+
+export async function getAvailability(barberId: string, date: string, serviceId: string) {
+  const targetDate = new Date(date + 'T00:00:00');
+  const dayOfWeek = targetDate.getDay();
+
+  const workingHour = await prisma.workingHour.findUnique({
+    where: { barberId_dayOfWeek: { barberId, dayOfWeek } },
+  });
+
+  if (!workingHour) {
+    return [];
+  }
+
+  const service = await prisma.service.findUnique({ where: { id: serviceId } });
+  if (!service) {
+    throw new AppError('Serviço não encontrado', 404);
+  }
+
+  const dayStart = new Date(date + 'T00:00:00');
+  const dayEnd = new Date(date + 'T23:59:59');
+
+  const appointments = await prisma.appointment.findMany({
+    where: {
+      barberId,
+      dateTime: { gte: dayStart, lte: dayEnd },
+      status: { not: 'CANCELLED' },
+    },
+    orderBy: { dateTime: 'asc' },
+  });
+
+  const [startHour, startMin] = workingHour.startTime.split(':').map(Number);
+  const [endHour, endMin] = workingHour.endTime.split(':').map(Number);
+  const durationMinutes = service.duration;
+
+  const slots: string[] = [];
+  let currentMinutes = startHour * 60 + startMin;
+  const closingMinutes = endHour * 60 + endMin;
+
+  while (currentMinutes + durationMinutes <= closingMinutes) {
+    const slotStart = new Date(targetDate);
+    slotStart.setHours(Math.floor(currentMinutes / 60), currentMinutes % 60, 0, 0);
+
+    const slotEnd = new Date(slotStart);
+    slotEnd.setMinutes(slotEnd.getMinutes() + durationMinutes);
+
+    const hasConflict = appointments.some((appt) => {
+      return slotStart < appt.endTime && slotEnd > appt.dateTime;
+    });
+
+    if (!hasConflict) {
+      const hh = String(Math.floor(currentMinutes / 60)).padStart(2, '0');
+      const mm = String(currentMinutes % 60).padStart(2, '0');
+      slots.push(`${hh}:${mm}`);
+    }
+
+    currentMinutes += 30;
+  }
+
+  return slots;
+}
