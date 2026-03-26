@@ -7,6 +7,7 @@ import {
   deleteBarberHandler,
   setWorkingHoursHandler,
   getAvailabilityHandler,
+  getBarbersMetricsOverviewHandler,
 } from './barber.controller';
 import { authenticate, authorize } from '../../shared/middlewares/auth';
 import { validate } from '../../shared/middlewares/validate';
@@ -14,9 +15,16 @@ import { createBarberSchema, updateBarberSchema, setWorkingHoursSchema } from '.
 
 const router = Router();
 
+router.get(
+  '/metrics/overview',
+  authenticate,
+  authorize('ADMIN'),
+  getBarbersMetricsOverviewHandler,
+);
+
 router.get('/', listBarbersHandler);
-router.get('/:id', getBarberHandler);
 router.get('/:id/availability', getAvailabilityHandler);
+router.get('/:id', getBarberHandler);
 
 router.post('/', authenticate, authorize('ADMIN'), validate(createBarberSchema), createBarberHandler);
 router.put('/:id', authenticate, authorize('ADMIN'), validate(updateBarberSchema), updateBarberHandler);

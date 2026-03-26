@@ -1,4 +1,14 @@
 import { prisma } from '../../config/prisma';
+import { Prisma } from '@prisma/client';
+
+/** Faturamento = soma do preço do serviço em agendamentos concluídos. */
+async function sumCompletedServiceRevenue(where: Prisma.AppointmentWhereInput) {
+  const rows = await prisma.appointment.findMany({
+    where: { status: 'COMPLETED', ...where },
+    select: { service: { select: { price: true } } },
+  });
+  return rows.reduce((sum, a) => sum + Number(a.service.price), 0);
+}
 
 export async function getStats() {
   const now = new Date();
@@ -9,21 +19,21 @@ export async function getStats() {
 
   const weekStart = new Date(todayStart);
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
 
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
   const [
     totalRevenue,
     appointmentsToday,
     totalClients,
     totalActiveBarbers,
-    revenueThisMonth,
+    monthlyRevenue,
     appointmentsThisWeek,
   ] = await Promise.all([
-    prisma.payment.aggregate({
-      where: { status: 'PAID' },
-      _sum: { amount: true },
-    }),
+    sumCompletedServiceRevenue({}),
     prisma.appointment.count({
       where: {
         dateTime: { gte: todayStart, lt: todayEnd },
@@ -35,26 +45,22 @@ export async function getStats() {
     prisma.barber.count({
       where: { active: true },
     }),
-    prisma.payment.aggregate({
-      where: {
-        status: 'PAID',
-        paidAt: { gte: monthStart },
-      },
-      _sum: { amount: true },
+    sumCompletedServiceRevenue({
+      dateTime: { gte: monthStart, lt: monthEnd },
     }),
     prisma.appointment.count({
       where: {
-        dateTime: { gte: weekStart, lt: todayEnd },
+        dateTime: { gte: weekStart, lt: weekEnd },
       },
     }),
   ]);
 
   return {
-    totalRevenue: totalRevenue._sum.amount ?? 0,
+    totalRevenue,
     appointmentsToday,
     totalClients,
     totalBarbers: totalActiveBarbers,
-    monthlyRevenue: revenueThisMonth._sum.amount ?? 0,
+    monthlyRevenue,
     weeklyAppointments: appointmentsThisWeek,
   };
 }

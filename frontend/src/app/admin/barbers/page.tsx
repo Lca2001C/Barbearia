@@ -9,6 +9,8 @@ import {
   Loader2,
   User,
   Clock,
+  TrendingUp,
+  Scissors,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '@/lib/api'
@@ -30,6 +32,15 @@ interface WorkingHour {
   dayOfWeek: number
   startTime: string
   endTime: string
+}
+
+interface BarberMetricRow {
+  id: string
+  name: string
+  email: string
+  active: boolean
+  completedCuts: number
+  totalRevenue: number
 }
 
 const DAY_NAMES = [
@@ -55,6 +66,7 @@ export default function AdminBarbersPage() {
   const [showHoursFor, setShowHoursFor] = useState<string | null>(null)
   const [hours, setHours] = useState<WorkingHour[]>([])
   const [savingHours, setSavingHours] = useState(false)
+  const [metrics, setMetrics] = useState<BarberMetricRow[]>([])
 
   useEffect(() => {
     fetchBarbers()
@@ -62,13 +74,21 @@ export default function AdminBarbersPage() {
 
   async function fetchBarbers() {
     try {
-      const { data } = await api.get('/barbers')
-      setBarbers(data.data || [])
+      const [listRes, metricsRes] = await Promise.all([
+        api.get('/barbers'),
+        api.get('/barbers/metrics/overview'),
+      ])
+      setBarbers(listRes.data.data || [])
+      setMetrics(metricsRes.data.data || [])
     } catch {
       toast.error('Erro ao carregar barbeiros.')
     } finally {
       setLoading(false)
     }
+  }
+
+  function metricFor(barberId: string) {
+    return metrics.find((m) => m.id === barberId)
   }
 
   function openCreate() {
@@ -100,7 +120,7 @@ export default function AdminBarbersPage() {
         toast.success('Barbeiro criado!')
       }
       setShowForm(false)
-      fetchBarbers()
+      await fetchBarbers()
     } catch {
       toast.error('Erro ao salvar barbeiro.')
     } finally {
@@ -113,7 +133,7 @@ export default function AdminBarbersPage() {
     try {
       await api.delete(`/barbers/${id}`)
       toast.success('Barbeiro removido!')
-      fetchBarbers()
+      await fetchBarbers()
     } catch {
       toast.error('Erro ao remover barbeiro.')
     }
@@ -165,13 +185,59 @@ export default function AdminBarbersPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Barbeiros</h2>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Barbeiros</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Cortes concluídos e faturamento por profissional (após marcar como
+            concluído em Agendamentos).
+          </p>
+        </div>
         <Button onClick={openCreate}>
           <Plus className="h-4 w-4" />
           Novo Barbeiro
         </Button>
       </div>
+
+      {metrics.length > 0 && (
+        <Card className="mb-6 overflow-x-auto border-slate-700">
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
+            <TrendingUp className="h-5 w-5 text-amber-500" />
+            Resumo por barbeiro
+          </h3>
+          <table className="w-full min-w-[480px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-800 text-slate-400">
+                <th className="pb-2 pr-4 font-medium">Barbeiro</th>
+                <th className="pb-2 pr-4 font-medium">Cortes concluídos</th>
+                <th className="pb-2 font-medium">Faturado</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800">
+              {metrics.map((m) => (
+                <tr key={m.id}>
+                  <td className="py-2 pr-4">
+                    <span className="font-medium text-white">{m.name}</span>
+                    {!m.active && (
+                      <span className="ml-2 text-xs text-slate-500">(inativo)</span>
+                    )}
+                  </td>
+                  <td className="py-2 pr-4 text-slate-300">
+                    <span className="inline-flex items-center gap-1">
+                      <Scissors className="h-3.5 w-3.5 text-slate-500" />
+                      {m.completedCuts}
+                    </span>
+                  </td>
+                  <td className="py-2 font-semibold text-amber-500">
+                    R${' '}
+                    {Number(m.totalRevenue).toFixed(2).replace('.', ',')}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
 
       {showForm && (
         <Card className="mb-6">
@@ -321,8 +387,30 @@ export default function AdminBarbersPage() {
                 <p className="mb-3 text-sm text-slate-400">{barber.bio}</p>
               )}
               {barber.phone && (
-                <p className="mb-4 text-sm text-slate-500">{barber.phone}</p>
+                <p className="mb-3 text-sm text-slate-500">{barber.phone}</p>
               )}
+
+              {(() => {
+                const m = metricFor(barber.id)
+                if (!m) return null
+                return (
+                  <div className="mb-4 rounded-lg border border-slate-700 bg-slate-800/40 px-3 py-2 text-sm">
+                    <p className="text-slate-400">
+                      Cortes concluídos:{' '}
+                      <span className="font-semibold text-white">
+                        {m.completedCuts}
+                      </span>
+                    </p>
+                    <p className="text-slate-400">
+                      Faturado:{' '}
+                      <span className="font-semibold text-amber-500">
+                        R${' '}
+                        {Number(m.totalRevenue).toFixed(2).replace('.', ',')}
+                      </span>
+                    </p>
+                  </div>
+                )
+              })()}
 
               <div className="flex gap-2">
                 <Button

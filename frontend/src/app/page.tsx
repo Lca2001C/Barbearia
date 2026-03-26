@@ -49,11 +49,11 @@ export default function HomePage() {
               Cia do Disfarce
             </h1>
             <p className="mt-2 text-lg text-zinc-400 sm:text-xl">
-              Barbe shop · Barbearia e visagismo
+              Barbe shop · Barbearia e estética masculina
             </p>
 
             <p className="mt-6 text-lg leading-relaxed text-zinc-400 sm:text-xl">
-              Estilo clássico com atitude. Cortes, barba e visagismo com profissionais
+              Estilo clássico com atitude. Cortes, barba  com profissionais
               que entendem o seu visual — do clássico ao contemporâneo.
             </p>
 
@@ -172,7 +172,7 @@ export default function HomePage() {
               </h2>
               <p className="mt-4 text-lg leading-relaxed text-slate-400">
                 Identidade visual forte, estética vintage e técnica afiada. A Cia
-                do Disfarce une barbearia clássica e visagismo para o homem que
+                do Disfarce une barbearia clássica para o homem que
                 quer presença e estilo em cada detalhe.
               </p>
               <p className="mt-4 text-lg leading-relaxed text-slate-400">

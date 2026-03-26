@@ -30,3 +30,13 @@ export async function getUpcomingHandler(_req: Request, res: Response) {
   const appointments = await appointmentService.getUpcoming();
   return res.json({ data: appointments });
 }
+
+export async function getTodayAppointmentsHandler(_req: Request, res: Response) {
+  const appointments = await appointmentService.getTodayAppointments();
+  return res.json({ data: appointments });
+}
+
+export async function getWeekAppointmentsHandler(_req: Request, res: Response) {
+  const appointments = await appointmentService.getWeekAppointments();
+  return res.json({ data: appointments });
+}

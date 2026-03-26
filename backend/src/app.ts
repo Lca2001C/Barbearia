@@ -10,7 +10,11 @@ const app = express();
 
 app.set('trust proxy', 1);
 
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }),
+);
 
 const corsOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean);
 const allowedOrigins = new Set([
@@ -19,11 +23,16 @@ const allowedOrigins = new Set([
   'http://127.0.0.1:3000',
 ]);
 
+function isLocalDevOrigin(origin: string) {
+  return /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$/i.test(origin);
+}
+
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
       if (allowedOrigins.has(origin)) return callback(null, true);
+      if (isLocalDevOrigin(origin)) return callback(null, true);
       callback(null, false);
     },
     credentials: true,

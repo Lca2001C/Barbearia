@@ -13,6 +13,7 @@ import {
   setTokens,
   clearTokens,
   getAccessToken,
+  getRefreshToken,
   setUser as storeUser,
   type User,
 } from '@/lib/auth'
@@ -44,6 +45,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data } = await api.get('/users/me')
       const userData = data.data
+      const accessToken = getAccessToken()
+      const refreshToken = getRefreshToken()
+
+      // Se o access token estiver com role desatualizada, refresh gera um token novo.
+      if (accessToken && refreshToken) {
+        try {
+          const payloadB64 = accessToken.split('.')[1]
+          const payloadJson = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'))
+          const payload = JSON.parse(payloadJson) as { role?: User['role'] }
+          if (payload.role && payload.role !== userData.role) {
+            const refreshResp = await api.post('/auth/refresh', { refreshToken })
+            const refreshed = refreshResp.data.data
+            setTokens(refreshed.accessToken, refreshed.refreshToken)
+            setUser(refreshed.user)
+            storeUser(refreshed.user)
+            return
+          }
+        } catch {
+          // Se falhar ao decodificar, segue com o userData.
+        }
+      }
+
       setUser(userData)
       storeUser(userData)
     } catch {

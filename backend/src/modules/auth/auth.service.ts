@@ -33,6 +33,16 @@ export async function register(data: RegisterInput) {
     throw new AppError('Email já cadastrado', 409);
   }
 
+  if (data.phone) {
+    const existingPhone = await prisma.user.findFirst({
+      where: { phone: data.phone },
+    });
+
+    if (existingPhone) {
+      throw new AppError('Telefone já cadastrado', 409);
+    }
+  }
+
   const hashedPassword = await hashPassword(data.password);
 
   const user = await prisma.user.create({
@@ -50,9 +60,17 @@ export async function register(data: RegisterInput) {
 }
 
 export async function login(data: LoginInput) {
-  const user = await prisma.user.findUnique({ where: { email: data.email } });
+  let user = await prisma.user.findUnique({ where: { email: data.email } });
   if (!user) {
     throw new AppError('Credenciais inválidas', 401);
+  }
+
+  // Garante que o usuário de admin padrão exista como ADMIN (caso o banco tenha sido seedado antes).
+  if (user.email === 'admin@barbearia.com' && user.role !== 'ADMIN') {
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: { role: 'ADMIN' },
+    });
   }
 
   const passwordValid = await comparePassword(data.password, user.password);
@@ -74,9 +92,14 @@ export async function refreshToken(token: string) {
       throw new AppError('Usuário não encontrado', 401);
     }
 
-    const tokens = generateTokens(user);
+    const ensuredUser =
+      user.email === 'admin@barbearia.com' && user.role !== 'ADMIN'
+        ? await prisma.user.update({ where: { id: user.id }, data: { role: 'ADMIN' } })
+        : user;
 
-    return { user: excludePassword(user), ...tokens };
+    const tokens = generateTokens(ensuredUser);
+
+    return { user: excludePassword(ensuredUser), ...tokens };
   } catch (err) {
     if (err instanceof AppError) throw err;
     throw new AppError('Refresh token inválido', 401);

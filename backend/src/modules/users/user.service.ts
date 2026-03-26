@@ -24,6 +24,19 @@ export async function getProfile(userId: string) {
 }
 
 export async function updateProfile(userId: string, data: UpdateProfileInput) {
+  if (data.phone) {
+    const existingPhone = await prisma.user.findFirst({
+      where: {
+        phone: data.phone,
+        NOT: { id: userId },
+      },
+    });
+
+    if (existingPhone) {
+      throw new AppError('Telefone já cadastrado', 409);
+    }
+  }
+
   const user = await prisma.user.update({
     where: { id: userId },
     data,

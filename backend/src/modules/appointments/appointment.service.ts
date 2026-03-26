@@ -120,3 +120,38 @@ export async function getUpcoming() {
     take: 10,
   });
 }
+
+export async function getTodayAppointments() {
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const todayEnd = new Date(todayStart)
+  todayEnd.setDate(todayEnd.getDate() + 1)
+
+  return prisma.appointment.findMany({
+    where: {
+      status: { in: ['PENDING', 'CONFIRMED'] },
+      dateTime: { gte: todayStart, lt: todayEnd },
+    },
+    include: appointmentIncludes,
+    orderBy: { dateTime: 'asc' },
+  })
+}
+
+export async function getWeekAppointments() {
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const weekStart = new Date(todayStart)
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekEnd.getDate() + 7)
+
+  return prisma.appointment.findMany({
+    where: {
+      status: { in: ['PENDING', 'CONFIRMED'] },
+      dateTime: { gte: weekStart, lt: weekEnd },
+    },
+    include: appointmentIncludes,
+    orderBy: { dateTime: 'asc' },
+  })
+}

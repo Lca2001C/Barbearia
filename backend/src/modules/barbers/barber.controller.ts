@@ -36,3 +36,8 @@ export async function getAvailabilityHandler(req: Request, res: Response) {
   const slots = await barberService.getAvailability(req.params.id, date, serviceId);
   return res.json({ data: slots });
 }
+
+export async function getBarbersMetricsOverviewHandler(_req: Request, res: Response) {
+  const rows = await barberService.getBarbersMetricsOverview();
+  return res.json({ data: rows });
+}

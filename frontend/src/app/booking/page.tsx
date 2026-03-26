@@ -69,7 +69,7 @@ export default function BookingPage() {
   const [step, setStep] = useState(0)
   const [services, setServices] = useState<Service[]>([])
   const [barbers, setBarbers] = useState<Barber[]>([])
-  const [slots, setSlots] = useState<string[]>([])
+  const [slots, setSlots] = useState<{ time: string; available: boolean }[]>([])
 
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null)
@@ -386,21 +386,31 @@ export default function BookingPage() {
                 </p>
               ) : (
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-                  {slots.map((time) => (
+                  {slots.map((slot) => (
                     <button
-                      key={time}
+                      key={slot.time}
                       type="button"
-                      onClick={() => selectTime(time)}
+                      disabled={!slot.available}
+                      onClick={() => selectTime(slot.time)}
                       className={`
                         rounded-lg px-3 py-2.5 text-sm font-medium transition-all
                         ${
-                          selectedTime === time
+                          selectedTime === slot.time && slot.available
                             ? 'bg-amber-500 text-slate-950'
-                            : 'border border-slate-700 bg-slate-800 text-white hover:border-amber-500'
+                            : slot.available
+                              ? 'border border-slate-700 bg-slate-800 text-white hover:border-amber-500'
+                              : 'cursor-not-allowed border border-slate-800 bg-slate-900/30 text-slate-500 opacity-60'
                         }
                       `}
                     >
-                      {time}
+                      <span className="flex items-center justify-center gap-2">
+                        <span>{slot.time}</span>
+                        {!slot.available && (
+                          <span className="text-[11px] font-medium text-slate-500">
+                            Reservado
+                          </span>
+                        )}
+                      </span>
                     </button>
                   ))}
                 </div>

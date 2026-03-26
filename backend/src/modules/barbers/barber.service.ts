@@ -123,7 +123,7 @@ export async function getAvailability(barberId: string, date: string, serviceId:
   const [endHour, endMin] = workingHour.endTime.split(':').map(Number);
   const durationMinutes = service.duration;
 
-  const slots: string[] = [];
+  const slots: { time: string; available: boolean }[] = [];
   let currentMinutes = startHour * 60 + startMin;
   const closingMinutes = endHour * 60 + endMin;
 
@@ -138,14 +138,47 @@ export async function getAvailability(barberId: string, date: string, serviceId:
       return slotStart < appt.endTime && slotEnd > appt.dateTime;
     });
 
-    if (!hasConflict) {
-      const hh = String(Math.floor(currentMinutes / 60)).padStart(2, '0');
-      const mm = String(currentMinutes % 60).padStart(2, '0');
-      slots.push(`${hh}:${mm}`);
-    }
+    const hh = String(Math.floor(currentMinutes / 60)).padStart(2, '0');
+    const mm = String(currentMinutes % 60).padStart(2, '0');
+    slots.push({
+      time: `${hh}:${mm}`,
+      available: !hasConflict,
+    });
 
     currentMinutes += 30;
   }
 
   return slots;
+}
+
+export async function getBarbersMetricsOverview() {
+  const barbers = await prisma.barber.findMany({
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true, active: true, email: true },
+  });
+
+  const completed = await prisma.appointment.findMany({
+    where: { status: 'COMPLETED' },
+    select: { barberId: true, service: { select: { price: true } } },
+  });
+
+  const acc = new Map<string, { completedCuts: number; totalRevenue: number }>();
+  for (const row of completed) {
+    const prev = acc.get(row.barberId) ?? { completedCuts: 0, totalRevenue: 0 };
+    prev.completedCuts += 1;
+    prev.totalRevenue += Number(row.service.price);
+    acc.set(row.barberId, prev);
+  }
+
+  return barbers.map((b) => {
+    const m = acc.get(b.id) ?? { completedCuts: 0, totalRevenue: 0 };
+    return {
+      id: b.id,
+      name: b.name,
+      email: b.email,
+      active: b.active,
+      completedCuts: m.completedCuts,
+      totalRevenue: m.totalRevenue,
+    };
+  });
 }
