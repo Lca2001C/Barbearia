@@ -15,6 +15,7 @@
   "dependencies": {
     "@prisma/client": "^6.19.0",
     "bcryptjs": "*",
+    "cookie-parser": "^1.4.7",
     "cors": "*",
     "date-fns": "*",
     "dotenv": "*",
@@ -23,15 +24,18 @@
     "helmet": "*",
     "jsonwebtoken": "*",
     "mercadopago": "*",
+    "nodemailer": "^8.0.4",
     "web-push": "*",
     "zod": "*"
   },
   "devDependencies": {
     "@types/bcryptjs": "*",
+    "@types/cookie-parser": "^1.4.10",
     "@types/cors": "*",
     "@types/express": "*",
     "@types/jsonwebtoken": "*",
     "@types/node": "*",
+    "@types/nodemailer": "^7.0.11",
     "@types/web-push": "*",
     "prisma": "^6.19.0",
     "tsx": "*",

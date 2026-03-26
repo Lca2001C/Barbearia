@@ -1,16 +1,9 @@
 import axios from 'axios'
-import { getAccessToken, getRefreshToken, setTokens, clearTokens } from './auth'
+import { clearTokens } from './auth'
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333/api',
-})
-
-api.interceptors.request.use((config) => {
-  const token = getAccessToken()
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
+  withCredentials: true,
 })
 
 let isRefreshing = false
@@ -24,7 +17,7 @@ function processQueue(error: unknown, token: string | null = null) {
     if (error) {
       promise.reject(error)
     } else {
-      promise.resolve(token!)
+      promise.resolve(token || '')
     }
   })
   failedQueue = []
@@ -34,38 +27,28 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
+    const requestUrl = String(originalRequest?.url || '')
+    const isAuthRoute = requestUrl.includes('/auth/')
+    const shouldSkipRefresh =
+      isAuthRoute || requestUrl.includes('/users/me') || originalRequest?._skipRefresh
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest?._retry && !shouldSkipRefresh) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
-        }).then((token) => {
-          originalRequest.headers.Authorization = `Bearer ${token}`
-          return api(originalRequest)
-        })
+        }).then(() => api(originalRequest))
       }
 
       originalRequest._retry = true
       isRefreshing = true
 
-      const refreshToken = getRefreshToken()
-      if (!refreshToken) {
-        clearTokens()
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login'
-        }
-        return Promise.reject(error)
-      }
-
       try {
-        const { data } = await axios.post(
+        await axios.post(
           `${api.defaults.baseURL}/auth/refresh`,
-          { refreshToken }
+          {},
+          { withCredentials: true }
         )
-        const { accessToken: newAccess, refreshToken: newRefresh } = data.data
-        setTokens(newAccess, newRefresh)
-        processQueue(null, newAccess)
-        originalRequest.headers.Authorization = `Bearer ${newAccess}`
+        processQueue(null, 'ok')
         return api(originalRequest)
       } catch (refreshError) {
         processQueue(refreshError, null)

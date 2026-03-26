@@ -10,7 +10,22 @@ async function sumCompletedServiceRevenue(where: Prisma.AppointmentWhereInput) {
   return rows.reduce((sum, a) => sum + Number(a.service.price), 0);
 }
 
-export async function getStats() {
+interface StatsRangeInput {
+  startDate?: string;
+  endDate?: string;
+}
+
+function parseCustomRange(input: StatsRangeInput): { start: Date; end: Date } | null {
+  if (!input.startDate || !input.endDate) return null;
+  const start = new Date(input.startDate);
+  const end = new Date(input.endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start >= end) {
+    return null;
+  }
+  return { start, end };
+}
+
+export async function getStats(input: StatsRangeInput = {}) {
   const now = new Date();
 
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -24,6 +39,7 @@ export async function getStats() {
 
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const customRange = parseCustomRange(input);
 
   const [
     totalRevenue,
@@ -33,9 +49,12 @@ export async function getStats() {
     monthlyRevenue,
     appointmentsThisWeek,
   ] = await Promise.all([
-    sumCompletedServiceRevenue({}),
+    sumCompletedServiceRevenue(
+      customRange ? { dateTime: { gte: customRange.start, lt: customRange.end } } : {},
+    ),
     prisma.appointment.count({
       where: {
+        status: { not: 'CANCELLED' },
         dateTime: { gte: todayStart, lt: todayEnd },
       },
     }),
@@ -50,6 +69,7 @@ export async function getStats() {
     }),
     prisma.appointment.count({
       where: {
+        status: { not: 'CANCELLED' },
         dateTime: { gte: weekStart, lt: weekEnd },
       },
     }),

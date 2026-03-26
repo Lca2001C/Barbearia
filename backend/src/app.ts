@@ -2,6 +2,7 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import { env } from './config/env';
 import { routes } from './routes';
 import { errorHandler } from './shared/middlewares/errorHandler';
@@ -39,6 +40,7 @@ app.use(
   }),
 );
 app.use(express.json({ limit: '10mb' }));
+app.use(cookieParser());
 
 if (env.RATE_LIMIT_MAX > 0) {
   app.use(

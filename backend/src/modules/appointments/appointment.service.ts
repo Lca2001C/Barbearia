@@ -10,6 +10,36 @@ const appointmentIncludes = {
   payment: true,
 };
 
+interface DateRangeInput {
+  startDate?: string;
+  endDate?: string;
+}
+
+function buildRangeWithFallback(input: DateRangeInput, fallback: 'today' | 'week') {
+  const now = new Date();
+
+  if (input.startDate && input.endDate) {
+    const start = new Date(input.startDate);
+    const end = new Date(input.endDate);
+    if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && start < end) {
+      return { start, end };
+    }
+  }
+
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const end = new Date(start);
+
+  if (fallback === 'today') {
+    end.setDate(end.getDate() + 1);
+    return { start, end };
+  }
+
+  start.setDate(start.getDate() - start.getDay());
+  end.setTime(start.getTime());
+  end.setDate(end.getDate() + 7);
+  return { start, end };
+}
+
 export async function createAppointment(userId: string, data: CreateAppointmentInput) {
   const service = await prisma.service.findUnique({ where: { id: data.serviceId } });
   if (!service) {
@@ -121,37 +151,28 @@ export async function getUpcoming() {
   });
 }
 
-export async function getTodayAppointments() {
-  const now = new Date()
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const todayEnd = new Date(todayStart)
-  todayEnd.setDate(todayEnd.getDate() + 1)
+export async function getTodayAppointments(input: DateRangeInput = {}) {
+  const { start, end } = buildRangeWithFallback(input, 'today');
 
   return prisma.appointment.findMany({
     where: {
       status: { in: ['PENDING', 'CONFIRMED'] },
-      dateTime: { gte: todayStart, lt: todayEnd },
+      dateTime: { gte: start, lt: end },
     },
     include: appointmentIncludes,
     orderBy: { dateTime: 'asc' },
-  })
+  });
 }
 
-export async function getWeekAppointments() {
-  const now = new Date()
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const weekStart = new Date(todayStart)
-  weekStart.setDate(weekStart.getDate() - weekStart.getDay())
-
-  const weekEnd = new Date(weekStart)
-  weekEnd.setDate(weekEnd.getDate() + 7)
+export async function getWeekAppointments(input: DateRangeInput = {}) {
+  const { start, end } = buildRangeWithFallback(input, 'week');
 
   return prisma.appointment.findMany({
     where: {
       status: { in: ['PENDING', 'CONFIRMED'] },
-      dateTime: { gte: weekStart, lt: weekEnd },
+      dateTime: { gte: start, lt: end },
     },
     include: appointmentIncludes,
     orderBy: { dateTime: 'asc' },
-  })
+  });
 }

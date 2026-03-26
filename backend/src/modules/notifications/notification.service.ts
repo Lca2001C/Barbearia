@@ -3,11 +3,18 @@ import { prisma } from '../../config/prisma';
 import { env } from '../../config/env';
 
 if (env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_EMAIL) {
-  webPush.setVapidDetails(
-    `mailto:${env.VAPID_EMAIL}`,
-    env.VAPID_PUBLIC_KEY,
-    env.VAPID_PRIVATE_KEY,
-  );
+  try {
+    webPush.setVapidDetails(
+      `mailto:${env.VAPID_EMAIL}`,
+      env.VAPID_PUBLIC_KEY,
+      env.VAPID_PRIVATE_KEY,
+    );
+  } catch (error) {
+    console.warn(
+      '[notifications] Chaves VAPID inválidas. Push notifications foram desativadas.',
+      error,
+    );
+  }
 }
 
 interface SubscriptionInput {

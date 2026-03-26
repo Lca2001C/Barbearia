@@ -2,31 +2,28 @@
 
 import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
 import { BrandLogo } from '@/components/BrandLogo'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
+import toast from 'react-hot-toast'
 
-export default function LoginPage() {
-  const router = useRouter()
-  const { login } = useAuth()
+export default function ForgotPasswordPage() {
+  const { forgotPassword } = useAuth()
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
     setLoading(true)
+
     try {
-      await login(email, password)
-      router.push('/')
+      await forgotPassword(email)
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { error?: { message?: string } } } })?.response
-          ?.data?.error?.message || 'Erro ao fazer login. Verifique suas credenciais.'
+          ?.data?.error?.message || 'Não foi possível enviar o e-mail de recuperação.'
       toast.error(message)
     } finally {
       setLoading(false)
@@ -39,9 +36,9 @@ export default function LoginPage() {
         <div className="mb-4 flex justify-center">
           <BrandLogo size="md" standalone />
         </div>
-        <h1 className="text-2xl font-bold text-white">Bem-vindo de volta</h1>
+        <h1 className="text-2xl font-bold text-white">Recuperar senha</h1>
         <p className="mt-1 text-sm text-slate-400">
-          Entre na sua conta para continuar
+          Informe seu e-mail para receber o token de redefinição.
         </p>
       </div>
 
@@ -54,36 +51,19 @@ export default function LoginPage() {
           onChange={(e) => setEmail(e.target.value)}
           required
         />
-        <Input
-          label="Senha"
-          type="password"
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
 
         <Button type="submit" fullWidth loading={loading} className="mt-6">
-          Entrar
+          Enviar recuperação
         </Button>
       </form>
 
-      <p className="mt-3 text-center text-sm">
-        <Link
-          href="/forgot-password"
-          className="font-medium text-slate-300 transition-colors hover:text-white"
-        >
-          Esqueci minha senha
-        </Link>
-      </p>
-
       <p className="mt-6 text-center text-sm text-slate-400">
-        Não tem uma conta?{' '}
+        Lembrou a senha?{' '}
         <Link
-          href="/register"
+          href="/login"
           className="font-medium text-amber-500 transition-colors hover:text-amber-400"
         >
-          Criar conta
+          Voltar para login
         </Link>
       </p>
     </Card>

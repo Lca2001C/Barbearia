@@ -9,6 +9,7 @@ import {
   TrendingUp,
   BarChart,
   Loader2,
+  AlertTriangle,
   Clock,
   User,
 } from 'lucide-react'
@@ -42,6 +43,7 @@ export default function AdminDashboardPage() {
   const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([])
   const [weekAppointments, setWeekAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
+  const [hasPartialError, setHasPartialError] = useState(false)
 
   const STATUS_CONFIG: Record<
     string,
@@ -66,24 +68,89 @@ export default function AdminDashboardPage() {
   }
 
   useEffect(() => {
-    Promise.all([
-      api.get('/dashboard/stats'),
-      api.get('/appointments/today'),
-      api.get('/appointments/week'),
+    const now = new Date()
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const todayEnd = new Date(todayStart)
+    todayEnd.setDate(todayEnd.getDate() + 1)
+
+    const weekStart = new Date(todayStart)
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekEnd.getDate() + 7)
+
+    // #region agent log
+    fetch('http://127.0.0.1:7772/ingest/efa8c094-3985-4d28-bcde-0c4cf7f1376c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ff99de'},body:JSON.stringify({sessionId:'ff99de',runId:'initial',hypothesisId:'H1',location:'frontend/src/app/admin/page.tsx:useEffect:start',message:'Dashboard fetch cycle started',data:{todayStart:todayStart.toISOString(),todayEnd:todayEnd.toISOString(),weekStart:weekStart.toISOString(),weekEnd:weekEnd.toISOString()},timestamp:Date.now()})}).catch(()=>{})
+    // #endregion
+
+    Promise.allSettled([
+      api.get('/dashboard/stats', {
+        params: {
+          startDate: weekStart.toISOString(),
+          endDate: weekEnd.toISOString(),
+        },
+      }),
+      api.get('/appointments/today', {
+        params: {
+          startDate: todayStart.toISOString(),
+          endDate: todayEnd.toISOString(),
+        },
+      }),
+      api.get('/appointments/week', {
+        params: {
+          startDate: weekStart.toISOString(),
+          endDate: weekEnd.toISOString(),
+        },
+      }),
     ])
       .then(([statsRes, todayRes, weekRes]) => {
-        setStats(statsRes.data.data)
-        setTodayAppointments(todayRes.data.data || [])
-        setWeekAppointments(weekRes.data.data || [])
+        // #region agent log
+        fetch('http://127.0.0.1:7772/ingest/efa8c094-3985-4d28-bcde-0c4cf7f1376c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ff99de'},body:JSON.stringify({sessionId:'ff99de',runId:'initial',hypothesisId:'H1',location:'frontend/src/app/admin/page.tsx:useEffect:allSettled',message:'Dashboard requests settled',data:{statsStatus:statsRes.status,todayStatus:todayRes.status,weekStatus:weekRes.status},timestamp:Date.now()})}).catch(()=>{})
+        // #endregion
+        const hasErrors =
+          statsRes.status === 'rejected' ||
+          todayRes.status === 'rejected' ||
+          weekRes.status === 'rejected'
+
+        setHasPartialError(hasErrors)
+
+        if (statsRes.status === 'fulfilled') {
+          setStats(statsRes.value.data.data)
+        } else {
+          setStats(null)
+        }
+
+        if (todayRes.status === 'fulfilled') {
+          setTodayAppointments(todayRes.value.data.data || [])
+        } else {
+          setTodayAppointments([])
+        }
+
+        if (weekRes.status === 'fulfilled') {
+          setWeekAppointments(weekRes.value.data.data || [])
+        } else {
+          setWeekAppointments([])
+        }
+
+        if (hasErrors) {
+          toast.error('Parte dos dados do dashboard não pôde ser carregada.')
+        }
       })
-      .catch(() => toast.error('Erro ao carregar dados do dashboard.'))
       .finally(() => setLoading(false))
   }, [])
 
   if (loading) {
     return (
-      <div className="flex justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+      <div>
+        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Card key={`skeleton-${index}`}>
+              <div className="h-16 animate-pulse rounded bg-slate-800/70" />
+            </Card>
+          ))}
+        </div>
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+        </div>
       </div>
     )
   }
@@ -123,6 +190,16 @@ export default function AdminDashboardPage() {
 
   return (
     <div>
+      {hasPartialError && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            Alguns dados falharam no carregamento. A tela continua disponível com as
+            informações recuperadas.
+          </p>
+        </div>
+      )}
+
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-white">Dashboard</h2>
         <p className="mt-1 text-sm text-slate-400">

@@ -10,10 +10,7 @@ import {
 } from 'react'
 import api from '@/lib/api'
 import {
-  setTokens,
   clearTokens,
-  getAccessToken,
-  getRefreshToken,
   setUser as storeUser,
   type User,
 } from '@/lib/auth'
@@ -30,6 +27,8 @@ interface AuthContextData {
     password: string,
     phone?: string
   ) => Promise<void>
+  forgotPassword: (email: string) => Promise<void>
+  resetPassword: (token: string, password: string) => Promise<void>
   logout: () => void
 }
 
@@ -45,28 +44,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data } = await api.get('/users/me')
       const userData = data.data
-      const accessToken = getAccessToken()
-      const refreshToken = getRefreshToken()
-
-      // Se o access token estiver com role desatualizada, refresh gera um token novo.
-      if (accessToken && refreshToken) {
-        try {
-          const payloadB64 = accessToken.split('.')[1]
-          const payloadJson = atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/'))
-          const payload = JSON.parse(payloadJson) as { role?: User['role'] }
-          if (payload.role && payload.role !== userData.role) {
-            const refreshResp = await api.post('/auth/refresh', { refreshToken })
-            const refreshed = refreshResp.data.data
-            setTokens(refreshed.accessToken, refreshed.refreshToken)
-            setUser(refreshed.user)
-            storeUser(refreshed.user)
-            return
-          }
-        } catch {
-          // Se falhar ao decodificar, segue com o userData.
-        }
-      }
-
       setUser(userData)
       storeUser(userData)
     } catch {
@@ -76,19 +53,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    const token = getAccessToken()
-    if (token) {
-      fetchUser().finally(() => setLoading(false))
-    } else {
-      setLoading(false)
-    }
+    fetchUser().finally(() => setLoading(false))
   }, [fetchUser])
 
   const login = useCallback(
     async (email: string, password: string) => {
       const { data } = await api.post('/auth/login', { email, password })
-      const { user: userData, accessToken, refreshToken } = data.data
-      setTokens(accessToken, refreshToken)
+      const { user: userData } = data.data
       setUser(userData)
       storeUser(userData)
       toast.success('Login realizado com sucesso!')
@@ -99,8 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(
     async (name: string, email: string, password: string, phone?: string) => {
       const { data } = await api.post('/auth', { name, email, password, phone })
-      const { user: userData, accessToken, refreshToken } = data.data
-      setTokens(accessToken, refreshToken)
+      const { user: userData } = data.data
       setUser(userData)
       storeUser(userData)
       toast.success('Conta criada com sucesso!')
@@ -108,7 +78,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   )
 
+  const forgotPassword = useCallback(async (email: string) => {
+    await api.post('/auth/forgot-password', { email })
+    toast.success('Se o e-mail existir, você receberá as instruções.')
+  }, [])
+
+  const resetPassword = useCallback(async (token: string, password: string) => {
+    await api.post('/auth/reset-password', { token, password })
+    toast.success('Senha redefinida com sucesso! Faça login novamente.')
+  }, [])
+
   const logout = useCallback(() => {
+    void api.post('/auth/logout').catch(() => undefined)
     clearTokens()
     setUser(null)
     toast.success('Logout realizado!')
@@ -117,7 +98,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, isAuthenticated, login, register, logout }}
+      value={{
+        user,
+        loading,
+        isAuthenticated,
+        login,
+        register,
+        forgotPassword,
+        resetPassword,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>
