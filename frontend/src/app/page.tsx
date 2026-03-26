@@ -24,16 +24,19 @@ const featuredCuts = [
     title: 'Platinado moderno',
     description: 'Acabamento limpo com visual marcante e personalidade.',
     image: '/corte-exemplo-1.png',
+    position: 'object-[center_30%]',
   },
   {
     title: 'Risco personalizado',
     description: 'Degradê com detalhe artístico para destacar seu estilo.',
     image: '/corte-exemplo-2.png',
+    position: 'object-[center_38%]',
   },
   {
     title: 'Infantil estiloso',
     description: 'Corte criativo e confortável para os pequenos.',
     image: '/corte-exemplo-3.png',
+    position: 'object-[center_35%]',
   },
 ]
 
@@ -48,23 +51,23 @@ export default function HomePage() {
   }, [])
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(245,158,11,0.14),_rgba(2,6,23,1)_40%)]">
       <Header />
 
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-black via-zinc-950 to-black" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/5 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0c] via-[#0f0f14] to-black" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-300/10 via-transparent to-transparent" />
 
         <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-2 lg:items-center lg:px-8 lg:py-24">
           <div className="max-w-2xl">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-1.5">
-              <Scissors className="h-4 w-4 text-zinc-200" />
-              <span className="text-sm font-semibold uppercase tracking-[0.2em] text-zinc-300">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-amber-200/20 bg-amber-100/5 px-4 py-1.5">
+              <Scissors className="h-4 w-4 text-amber-200" />
+              <span className="text-sm font-semibold uppercase tracking-[0.2em] text-amber-100/80">
                 Cia do Disfarce
               </span>
             </div>
 
-            <h1 className="font-serif text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+            <h1 className="bg-gradient-to-r from-white via-amber-100 to-amber-300/90 bg-clip-text font-serif text-4xl font-bold tracking-tight text-transparent sm:text-5xl lg:text-6xl">
               Sua barbearia de confiança para corte, barba e estilo.
             </h1>
             <p className="mt-4 text-lg leading-relaxed text-zinc-300 sm:text-xl">
@@ -87,11 +90,11 @@ export default function HomePage() {
             </div>
 
             <div className="mt-10 flex flex-wrap items-center gap-6 text-sm">
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-emerald-300">
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-500/10 px-4 py-2 text-amber-100">
                 <ShieldCheck className="h-4 w-4" />
                 Atendimento profissional
               </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/20 bg-amber-500/10 px-4 py-2 text-amber-300">
+              <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200/20 bg-zinc-100/5 px-4 py-2 text-zinc-200">
                 <Sparkles className="h-4 w-4" />
                 Visual personalizado
               </div>
@@ -116,9 +119,9 @@ export default function HomePage() {
           </div>
 
           <div className="relative">
-            <div className="absolute -inset-3 rounded-[2rem] bg-gradient-to-tr from-zinc-700/40 via-white/0 to-amber-500/20 blur-2xl" />
-            <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950/80 p-6 shadow-2xl">
-              <div className="mb-5 rounded-2xl border border-white/10 bg-black p-5">
+            <div className="absolute -inset-3 rounded-[2rem] bg-gradient-to-tr from-amber-400/30 via-white/0 to-zinc-700/20 blur-2xl" />
+            <div className="relative overflow-hidden rounded-[2rem] border border-amber-100/15 bg-zinc-950/80 p-6 shadow-2xl ring-1 ring-amber-100/10">
+              <div className="mb-5 rounded-2xl border border-amber-100/10 bg-black p-5">
                 <Image
                   src="/logo-cia-do-disfarce.png"
                   alt="Logo Cia do Disfarce"
@@ -130,11 +133,12 @@ export default function HomePage() {
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
                 {featuredCuts.map((cut) => (
-                  <div key={cut.title} className="overflow-hidden rounded-xl border border-white/10 bg-black/40">
-                    <div className="relative h-28 w-full">
-                      <Image src={cut.image} alt={cut.title} fill className="object-cover" />
+                  <div key={cut.title} className="overflow-hidden rounded-xl border border-amber-100/10 bg-black/40">
+                    <div className="relative h-32 w-full">
+                      <Image src={cut.image} alt={cut.title} fill className={`object-cover ${cut.position}`} />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
                     </div>
-                    <p className="px-2 py-2 text-center text-xs text-zinc-300">
+                    <p className="px-2 py-2 text-center text-xs text-zinc-200">
                       {cut.title}
                     </p>
                   </div>
@@ -147,7 +151,7 @@ export default function HomePage() {
 
       <section id="cortes" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="mb-10 text-center">
-          <h2 className="text-3xl font-bold text-white sm:text-4xl">
+          <h2 className="bg-gradient-to-r from-amber-100 via-white to-amber-300 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
             Cortes em destaque
           </h2>
           <p className="mt-3 text-zinc-400">
@@ -159,10 +163,11 @@ export default function HomePage() {
           {featuredCuts.map((cut) => (
             <article
               key={cut.title}
-              className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/40 shadow-xl"
+              className="overflow-hidden rounded-2xl border border-amber-100/10 bg-zinc-900/50 shadow-xl ring-1 ring-amber-100/5"
             >
-              <div className="relative h-72 w-full">
-                <Image src={cut.image} alt={cut.title} fill className="object-cover" />
+              <div className="relative h-80 w-full">
+                <Image src={cut.image} alt={cut.title} fill className={`object-cover ${cut.position}`} />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10" />
               </div>
               <div className="p-5">
                 <h3 className="text-lg font-semibold text-white">{cut.title}</h3>
@@ -177,7 +182,7 @@ export default function HomePage() {
 
       <section id="servicos" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="mb-12 text-center">
-          <h2 className="text-3xl font-bold text-white sm:text-4xl">
+          <h2 className="bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
             Serviços da barbearia
           </h2>
           <p className="mt-3 text-zinc-400">
@@ -247,11 +252,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-t border-slate-800 bg-slate-900/50">
+      <section className="border-t border-amber-100/10 bg-gradient-to-b from-zinc-950 to-black/80">
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             <div>
-              <h2 className="font-serif text-3xl font-bold text-white sm:text-4xl">
+              <h2 className="bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text font-serif text-3xl font-bold text-transparent sm:text-4xl">
                 Sobre a <span className="text-zinc-100">Cia do Disfarce Barber Shop</span>
               </h2>
               <p className="mt-4 text-lg leading-relaxed text-slate-400">
@@ -276,7 +281,7 @@ export default function HomePage() {
               </div>
             </div>
             <div className="flex items-center justify-center">
-              <div className="relative flex h-72 w-72 items-center justify-center rounded-2xl border border-white/10 bg-black p-6 shadow-2xl ring-1 ring-white/10 sm:h-80 sm:w-80">
+              <div className="relative flex h-72 w-72 items-center justify-center rounded-2xl border border-amber-100/15 bg-black p-6 shadow-2xl ring-1 ring-amber-100/10 sm:h-80 sm:w-80">
                 <Image
                   src="/logo-cia-do-disfarce.png"
                   alt="Cia do Disfarce"

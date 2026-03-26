@@ -36,13 +36,15 @@ export default function RegisterPage() {
   }
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-md border-amber-100/15 bg-zinc-950/85 shadow-2xl ring-1 ring-amber-100/10">
       <div className="mb-8 text-center">
         <div className="mb-4 flex justify-center">
           <BrandLogo size="md" standalone />
         </div>
-        <h1 className="text-2xl font-bold text-white">Criar conta</h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <h1 className="bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-2xl font-bold text-transparent">
+          Criar conta
+        </h1>
+        <p className="mt-1 text-sm text-zinc-400">
           Cadastre-se para agendar seus horários
         </p>
       </div>
@@ -86,11 +88,11 @@ export default function RegisterPage() {
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-slate-400">
+      <p className="mt-6 text-center text-sm text-zinc-400">
         Já tem uma conta?{' '}
         <Link
           href="/login"
-          className="font-medium text-amber-500 transition-colors hover:text-amber-400"
+          className="font-medium text-amber-300 transition-colors hover:text-amber-200"
         >
           Entrar
         </Link>

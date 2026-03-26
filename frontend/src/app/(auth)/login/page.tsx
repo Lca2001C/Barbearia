@@ -34,13 +34,15 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-md border-amber-100/15 bg-zinc-950/85 shadow-2xl ring-1 ring-amber-100/10">
       <div className="mb-8 text-center">
         <div className="mb-4 flex justify-center">
           <BrandLogo size="md" standalone />
         </div>
-        <h1 className="text-2xl font-bold text-white">Bem-vindo de volta</h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <h1 className="bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-2xl font-bold text-transparent">
+          Bem-vindo de volta
+        </h1>
+        <p className="mt-1 text-sm text-zinc-400">
           Entre na sua conta para continuar
         </p>
       </div>
@@ -71,17 +73,17 @@ export default function LoginPage() {
       <p className="mt-3 text-center text-sm">
         <Link
           href="/forgot-password"
-          className="font-medium text-slate-300 transition-colors hover:text-white"
+          className="font-medium text-zinc-300 transition-colors hover:text-amber-100"
         >
           Esqueci minha senha
         </Link>
       </p>
 
-      <p className="mt-6 text-center text-sm text-slate-400">
+      <p className="mt-6 text-center text-sm text-zinc-400">
         Não tem uma conta?{' '}
         <Link
           href="/register"
-          className="font-medium text-amber-500 transition-colors hover:text-amber-400"
+          className="font-medium text-amber-300 transition-colors hover:text-amber-200"
         >
           Criar conta
         </Link>
