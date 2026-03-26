@@ -24,11 +24,17 @@ export function BrandLogo({
   const inner = (
     <div className={`flex items-center gap-3 ${className}`}>
       <span
-        className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-zinc-100 bg-black shadow-md ring-1 ring-white/20"
+        className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-700/80 bg-black px-2 py-1 shadow-md ring-1 ring-white/10"
         style={{ width: px, height: px }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.svg" alt="Cia do Disfarce" width={px} height={px} className="object-cover" />
+        <img
+          src="/logo-cia-do-disfarce.png"
+          alt="Cia do Disfarce"
+          width={px}
+          height={px}
+          className="h-full w-full object-contain"
+        />
       </span>
       {withText && (
         <div className="flex min-w-0 flex-col leading-tight">
