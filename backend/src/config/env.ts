@@ -23,6 +23,9 @@ const envSchema = z.object({
   VAPID_PUBLIC_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
   VAPID_PRIVATE_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
   VAPID_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
+  /** 0 = desliga o rate limit (útil só em dev local). Padrão: 2000 req / janela. */
+  RATE_LIMIT_MAX: z.coerce.number().default(2000),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
 });
 
 export const env = envSchema.parse(process.env);

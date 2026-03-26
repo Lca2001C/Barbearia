@@ -31,15 +31,19 @@ app.use(
 );
 app.use(express.json({ limit: '10mb' }));
 
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: { message: 'Muitas requisições, tente novamente mais tarde', statusCode: 429 } },
-  }),
-);
+if (env.RATE_LIMIT_MAX > 0) {
+  app.use(
+    rateLimit({
+      windowMs: env.RATE_LIMIT_WINDOW_MS,
+      max: env.RATE_LIMIT_MAX,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: {
+        error: { message: 'Muitas requisições, tente novamente mais tarde', statusCode: 429 },
+      },
+    }),
+  );
+}
 
 app.use('/api', routes);
 
