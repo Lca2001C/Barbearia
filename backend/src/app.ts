@@ -17,12 +17,12 @@ app.use(
   }),
 );
 
-const corsOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean);
-const allowedOrigins = new Set([
-  ...corsOrigins.filter((o) => o !== '*'),
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-]);
+const corsOrigins = env.CORS_ORIGIN.split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+const wildcardCors = corsOrigins.includes('*');
+const allowedOrigins = new Set(corsOrigins.filter((o) => o !== '*'));
+const isDev = process.env.NODE_ENV !== 'production';
 
 function isLocalDevOrigin(origin: string) {
   return /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$/i.test(origin);
@@ -32,8 +32,9 @@ app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
+      if (wildcardCors) return callback(null, true);
       if (allowedOrigins.has(origin)) return callback(null, true);
-      if (isLocalDevOrigin(origin)) return callback(null, true);
+      if (isDev && isLocalDevOrigin(origin)) return callback(null, true);
       callback(null, false);
     },
     credentials: true,

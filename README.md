@@ -82,23 +82,29 @@ cp .env.example .env
 3. Suba todos os serviços com um único comando:
 
 ```bash
-docker compose up --build
+docker-compose up --build
 ```
 
 4. Em outro terminal, rode as migrações e o seed:
 
 ```bash
-docker compose exec backend npx prisma migrate dev --name init
-docker compose exec backend npm run prisma:seed
+docker-compose exec backend npx prisma migrate dev --name init
+docker-compose exec backend npm run prisma:seed
 ```
 
 5. Acesse a aplicação:
 
-| Serviço   | URL                            |
-| --------- | ------------------------------ |
-| Frontend  | http://localhost:3000           |
-| API       | http://localhost:3333/api       |
-| Prisma    | `docker compose exec backend npx prisma studio` |
+| Serviço                | URL/Porta                                    |
+| ---------------------- | --------------------------------------------- |
+| Frontend (HTTPS)       | https://localhost:8443                       |
+| API (HTTPS)            | https://localhost:8443/api                   |
+| Frontend (HTTP proxy)  | http://localhost:8080                        |
+| API (HTTP proxy)       | http://localhost:8080/api                    |
+| PostgreSQL             | localhost:5434                               |
+| Prisma                 | `docker-compose exec backend npx prisma studio` |
+
+> O ambiente usa **Caddy** como proxy reverso com TLS local (`tls internal`), fazendo a terminação HTTPS.
+> `frontend` e `backend` ficam na rede interna do Docker e são roteados pelo proxy.
 
 ### Credenciais do Admin (seed)
 
@@ -121,7 +127,7 @@ npm install
 npx prisma generate
 npx prisma migrate dev --name init
 npm run prisma:seed
-npm run dev                    # http://localhost:3333
+npm run dev                    # http://localhost:3335
 ```
 
 ### Frontend
@@ -130,7 +136,7 @@ npm run dev                    # http://localhost:3333
 cd frontend
 cp .env.example .env.local
 npm install
-npm run dev                    # http://localhost:3000
+npm run dev                    # http://localhost:3100
 ```
 
 ## Variáveis de Ambiente
@@ -142,8 +148,11 @@ npm run dev                    # http://localhost:3000
 | DATABASE_URL               | URL de conexão do PostgreSQL          | Sim         |
 | JWT_SECRET                 | Chave secreta para access tokens      | Sim         |
 | JWT_REFRESH_SECRET         | Chave secreta para refresh tokens     | Sim         |
-| PORT                       | Porta da API (padrão: 3333)           | Não         |
-| CORS_ORIGIN                | Origem permitida (padrão: localhost)  | Não         |
+| PORT                       | Porta interna da API (padrão: 3335)   | Não         |
+| CORS_ORIGIN                | Origens permitidas (separadas por vírgula) | Não    |
+| FRONTEND_URL               | URL pública do frontend (HTTPS)       | Não         |
+| COOKIE_SECURE              | Cookies apenas via HTTPS              | Não         |
+| COOKIE_SAMESITE            | `lax`, `strict` ou `none`             | Não         |
 | MERCADOPAGO_ACCESS_TOKEN   | Token de acesso da API Mercado Pago   | Não*        |
 | VAPID_PUBLIC_KEY            | Chave pública VAPID (push)           | Não*        |
 | VAPID_PRIVATE_KEY           | Chave privada VAPID (push)           | Não*        |
@@ -151,6 +160,16 @@ npm run dev                    # http://localhost:3000
 
 > *Sem o token do Mercado Pago, o sistema gera códigos PIX mock para testes.
 > Para gerar chaves VAPID: `npx web-push generate-vapid-keys`
+
+### Variáveis raiz (`.env`)
+
+| Variável             | Descrição |
+| -------------------- | --------- |
+| APP_HTTP_PORT        | Porta HTTP do proxy Caddy (padrão: 8080) |
+| APP_HTTPS_PORT       | Porta HTTPS do proxy Caddy (padrão: 8443) |
+| APP_URL              | URL pública do frontend (HTTPS) |
+| API_URL              | URL pública da API (HTTPS) |
+| NEXT_PUBLIC_API_URL  | URL da API usada pelo frontend |
 
 ### Frontend (`frontend/.env.local`)
 
@@ -200,6 +219,8 @@ npm run dev                    # http://localhost:3000
 | POST   | /api/appointments                   | Criar agendamento      | Sim   |
 | GET    | /api/appointments                   | Listar agendamentos    | Sim   |
 | GET    | /api/appointments/upcoming          | Próximos agendamentos  | Admin |
+| GET    | /api/appointments/today             | Agendamentos de hoje   | Admin |
+| GET    | /api/appointments/week              | Agendamentos da semana | Admin |
 | GET    | /api/appointments/:id               | Detalhes               | Sim   |
 | PATCH  | /api/appointments/:id/cancel        | Cancelar               | Sim   |
 | PATCH  | /api/appointments/:id/complete      | Marcar como concluído  | Admin |
@@ -246,6 +267,13 @@ cd frontend
 fly launch
 fly secrets set NEXT_PUBLIC_API_URL="https://seu-backend.fly.dev/api"
 ```
+
+## Troubleshooting (HTTPS e Docker)
+
+- **Porta em uso**: ajuste `APP_HTTP_PORT`, `APP_HTTPS_PORT` e `DB_PORT` no `.env`.
+- **Container com nome em conflito**: rode `docker-compose down` e depois `docker rm -f barbearia_web barbearia_api barbearia_db barbearia_proxy` se necessário.
+- **Certificado local no navegador**: no primeiro acesso HTTPS, aceite o certificado local gerado pelo Caddy (ambiente de desenvolvimento).
+- **API não responde no HTTPS**: confira se `barbearia_proxy`, `barbearia_api` e `barbearia_web` estão `Up` com `docker ps`.
 
 ## Licença
 

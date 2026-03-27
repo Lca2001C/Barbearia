@@ -3,10 +3,11 @@ import * as authService from './auth.service';
 import { env } from '../../config/env';
 
 function buildCookieOptions(maxAgeMs: number) {
+  const secure = env.COOKIE_SECURE || env.COOKIE_SAMESITE === 'none';
   return {
     httpOnly: true,
-    sameSite: 'lax' as const,
-    secure: env.COOKIE_SECURE,
+    sameSite: env.COOKIE_SAMESITE,
+    secure,
     path: '/',
     maxAge: maxAgeMs,
   };
@@ -32,7 +33,12 @@ function setAuthCookies(
 }
 
 function clearAuthCookies(res: Response) {
-  const options = { httpOnly: true, sameSite: 'lax' as const, secure: env.COOKIE_SECURE, path: '/' };
+  const options = {
+    httpOnly: true,
+    sameSite: env.COOKIE_SAMESITE,
+    secure: env.COOKIE_SECURE || env.COOKIE_SAMESITE === 'none',
+    path: '/',
+  };
   res.clearCookie(env.JWT_ACCESS_COOKIE_NAME, options);
   res.clearCookie(env.JWT_REFRESH_COOKIE_NAME, options);
 }

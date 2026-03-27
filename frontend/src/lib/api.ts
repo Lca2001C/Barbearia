@@ -1,8 +1,16 @@
 import axios from 'axios'
 import { clearTokens } from './auth'
 
+const isProd = process.env.NODE_ENV === 'production'
+const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL
+const defaultDevApiUrl = 'https://localhost:8443/api'
+
+if (isProd && !configuredApiUrl) {
+  throw new Error('NEXT_PUBLIC_API_URL não configurada para ambiente de produção.')
+}
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3333/api',
+  baseURL: configuredApiUrl || defaultDevApiUrl,
   withCredentials: true,
 })
 
