@@ -15,28 +15,15 @@ export default function RegisterPage() {
   const { register } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [username, setUsername] = useState('')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (password !== confirmPassword) {
-      toast.error('As senhas não coincidem.')
-      return
-    }
     setLoading(true)
     try {
-      await register(
-        name,
-        email,
-        password,
-        phone || undefined,
-        username || undefined,
-        confirmPassword
-      )
+      await register(name, email, password, phone || undefined)
       router.push('/')
     } catch (err: unknown) {
       const message =
@@ -80,13 +67,6 @@ export default function RegisterPage() {
           required
         />
         <Input
-          label="Username"
-          type="text"
-          placeholder="seu_username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-        <Input
           label="Telefone"
           type="tel"
           placeholder="(11) 99999-9999"
@@ -99,15 +79,6 @@ export default function RegisterPage() {
           placeholder="••••••••"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={6}
-        />
-        <Input
-          label="Confirmar senha"
-          type="password"
-          placeholder="••••••••"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
           required
           minLength={6}
         />

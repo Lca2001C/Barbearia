@@ -11,13 +11,9 @@ import {
   Clock,
   TrendingUp,
   Scissors,
-  History,
 } from 'lucide-react'
-import { format, parseISO } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import api from '@/lib/api'
-import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
@@ -47,22 +43,6 @@ interface BarberMetricRow {
   totalRevenue: number
 }
 
-interface BarberHistoryRow {
-  id: string
-  dateTime: string
-  status: 'COMPLETED'
-  user: {
-    id: string
-    name: string
-    email: string
-  }
-  service: {
-    id: string
-    name: string
-    price: number
-  }
-}
-
 const DAY_NAMES = [
   'Domingo',
   'Segunda',
@@ -76,8 +56,6 @@ const DAY_NAMES = [
 const EMPTY_FORM = { name: '', email: '', phone: '', bio: '' }
 
 export default function AdminBarbersPage() {
-  const { user } = useAuth()
-  const isSub = user?.role === 'SUB_ADMIN'
   const [barbers, setBarbers] = useState<Barber[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -89,10 +67,6 @@ export default function AdminBarbersPage() {
   const [hours, setHours] = useState<WorkingHour[]>([])
   const [savingHours, setSavingHours] = useState(false)
   const [metrics, setMetrics] = useState<BarberMetricRow[]>([])
-  const [showHistoryFor, setShowHistoryFor] = useState<string | null>(null)
-  const [historyRows, setHistoryRows] = useState<BarberHistoryRow[]>([])
-  const [historySort, setHistorySort] = useState<'desc' | 'asc'>('desc')
-  const [loadingHistory, setLoadingHistory] = useState(false)
 
   useEffect(() => {
     fetchBarbers()
@@ -165,35 +139,14 @@ export default function AdminBarbersPage() {
     }
   }
 
-  async function openHours(barberId: string) {
+  function openHours(barberId: string) {
     setShowHoursFor(barberId)
-    setSavingHours(false)
-    try {
-      const { data } = await api.get(`/barbers/${barberId}`)
-      const savedHours: WorkingHour[] = data.data?.workingHours || []
-
-      const normalized = Array.from({ length: 7 }, (_, dayOfWeek) => {
-        const existing = savedHours.find((h) => h.dayOfWeek === dayOfWeek)
-        return (
-          existing || {
-            dayOfWeek,
-            startTime: '',
-            endTime: '',
-          }
-        )
-      })
-
-      setHours(normalized)
-    } catch {
-      setHours(
-        Array.from({ length: 7 }, (_, dayOfWeek) => ({
-          dayOfWeek,
-          startTime: '',
-          endTime: '',
-        }))
-      )
-      toast.error('Erro ao carregar horários do barbeiro.')
-    }
+    const defaultHours: WorkingHour[] = Array.from({ length: 7 }, (_, i) => ({
+      dayOfWeek: i,
+      startTime: i >= 1 && i <= 5 ? '09:00' : '',
+      endTime: i >= 1 && i <= 5 ? '18:00' : '',
+    }))
+    setHours(defaultHours)
   }
 
   function updateHour(dayOfWeek: number, field: 'startTime' | 'endTime', value: string) {
@@ -215,41 +168,10 @@ export default function AdminBarbersPage() {
       })
       toast.success('Horários atualizados!')
       setShowHoursFor(null)
-      await fetchBarbers()
     } catch {
       toast.error('Erro ao salvar horários.')
     } finally {
       setSavingHours(false)
-    }
-  }
-
-  async function openHistory(barberId: string) {
-    setShowHistoryFor(barberId)
-    setHistorySort('desc')
-    setLoadingHistory(true)
-    try {
-      const { data } = await api.get(`/barbers/${barberId}/history?order=desc`)
-      setHistoryRows(data.data || [])
-    } catch {
-      toast.error('Erro ao carregar histórico do barbeiro.')
-      setHistoryRows([])
-    } finally {
-      setLoadingHistory(false)
-    }
-  }
-
-  async function changeHistoryOrder(order: 'asc' | 'desc') {
-    if (!showHistoryFor) return
-    setHistorySort(order)
-    setLoadingHistory(true)
-    try {
-      const { data } = await api.get(`/barbers/${showHistoryFor}/history?order=${order}`)
-      setHistoryRows(data.data || [])
-    } catch {
-      toast.error('Erro ao ordenar histórico.')
-      setHistoryRows([])
-    } finally {
-      setLoadingHistory(false)
     }
   }
 
@@ -265,21 +187,16 @@ export default function AdminBarbersPage() {
     <div>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">
-            {isSub ? 'Meu faturamento' : 'Barbeiros'}
-          </h2>
+          <h2 className="text-2xl font-bold text-white">Barbeiros</h2>
           <p className="mt-1 text-sm text-slate-400">
-            {isSub
-              ? 'Consulta dos seus cortes concluídos e faturamento vinculado ao seu perfil.'
-              : 'Cortes concluídos e faturamento por profissional (após marcar como concluído em Agendamentos).'}
+            Cortes concluídos e faturamento por profissional (após marcar como
+            concluído em Agendamentos).
           </p>
         </div>
-        {!isSub && (
-          <Button onClick={openCreate}>
-            <Plus className="h-4 w-4" />
-            Novo Barbeiro
-          </Button>
-        )}
+        <Button onClick={openCreate}>
+          <Plus className="h-4 w-4" />
+          Novo Barbeiro
+        </Button>
       </div>
 
       {metrics.length > 0 && (
@@ -322,7 +239,7 @@ export default function AdminBarbersPage() {
         </Card>
       )}
 
-      {showForm && !isSub && (
+      {showForm && (
         <Card className="mb-6">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-white">
@@ -377,7 +294,7 @@ export default function AdminBarbersPage() {
         </Card>
       )}
 
-      {showHoursFor && !isSub && (
+      {showHoursFor && (
         <Card className="mb-6">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-white">
@@ -439,87 +356,6 @@ export default function AdminBarbersPage() {
         </Card>
       )}
 
-      {showHistoryFor && (
-        <Card className="mb-6">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-white">
-                Histórico de cortes concluídos
-              </h3>
-              <p className="text-sm text-slate-400">
-                Cliente, serviço, data, valor e status.
-              </p>
-            </div>
-            <button
-              onClick={() => setShowHistoryFor(null)}
-              className="text-slate-400 hover:text-white"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          <div className="mb-4 flex items-center justify-end gap-2">
-            <span className="text-sm text-slate-400">Ordenar por data:</span>
-            <select
-              value={historySort}
-              onChange={(e) => changeHistoryOrder(e.target.value as 'asc' | 'desc')}
-              className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white"
-            >
-              <option value="desc">Mais recente</option>
-              <option value="asc">Mais antigo</option>
-            </select>
-          </div>
-
-          {loadingHistory ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-amber-500" />
-            </div>
-          ) : historyRows.length === 0 ? (
-            <p className="py-8 text-center text-slate-400">
-              Nenhum atendimento concluído para este barbeiro.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[680px] text-left text-sm">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400">
-                    <th className="pb-2 pr-4 font-medium">Cliente</th>
-                    <th className="pb-2 pr-4 font-medium">Serviço</th>
-                    <th className="pb-2 pr-4 font-medium">Data</th>
-                    <th className="pb-2 pr-4 font-medium">Valor</th>
-                    <th className="pb-2 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {historyRows.map((row) => (
-                    <tr key={row.id}>
-                      <td className="py-2 pr-4">
-                        <p className="font-medium text-white">{row.user.name}</p>
-                        <p className="text-xs text-slate-500">{row.user.email}</p>
-                      </td>
-                      <td className="py-2 pr-4 text-slate-300">{row.service.name}</td>
-                      <td className="py-2 pr-4 text-slate-300">
-                        {format(parseISO(row.dateTime), "dd/MM/yyyy 'às' HH:mm", {
-                          locale: ptBR,
-                        })}
-                      </td>
-                      <td className="py-2 pr-4 font-semibold text-amber-500">
-                        R$ {Number(row.service.price).toFixed(2).replace('.', ',')}
-                      </td>
-                      <td className="py-2">
-                        <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-0.5 text-xs font-medium text-blue-400">
-                          Concluído
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
-      )}
-
       {barbers.length === 0 ? (
         <Card className="py-12 text-center">
           <User className="mx-auto mb-2 h-8 w-8 text-slate-600" />
@@ -576,44 +412,30 @@ export default function AdminBarbersPage() {
                 )
               })()}
 
-              <div className="flex flex-wrap gap-2">
-                {!isSub && (
-                  <>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => openEdit(barber)}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                      Editar
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openHours(barber.id)}
-                    >
-                      <Clock className="h-3.5 w-3.5" />
-                      Horários
-                    </Button>
-                  </>
-                )}
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => openEdit(barber)}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Editar
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => openHistory(barber.id)}
+                  onClick={() => openHours(barber.id)}
                 >
-                  <History className="h-3.5 w-3.5" />
-                  Histórico
+                  <Clock className="h-3.5 w-3.5" />
+                  Horários
                 </Button>
-                {!isSub && (
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() => handleDelete(barber.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                )}
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => handleDelete(barber.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               </div>
             </Card>
           ))}

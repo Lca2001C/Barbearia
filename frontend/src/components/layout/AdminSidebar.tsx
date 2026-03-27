@@ -5,43 +5,27 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
   Users,
-  UsersRound,
   Scissors,
   Calendar,
   Package,
-  Home,
   X,
 } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
 
 interface AdminSidebarProps {
   open: boolean
   onClose: () => void
 }
 
-const allLinks = [
+const links = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/admin/barbers', label: 'Barbeiros', icon: UsersRound },
-  { href: '/admin/services', label: 'Serviços', icon: Scissors, adminOnly: true },
+  { href: '/admin/barbers', label: 'Barbeiros', icon: Users },
+  { href: '/admin/services', label: 'Serviços', icon: Scissors },
   { href: '/admin/stock', label: 'Estoque', icon: Package },
   { href: '/admin/appointments', label: 'Agendamentos', icon: Calendar },
-  {
-    href: '/admin/users',
-    label: 'Gerenciamento de Usuários',
-    icon: Users,
-    adminOnly: true,
-  },
-] as const
+]
 
 export function AdminSidebar({ open, onClose }: AdminSidebarProps) {
   const pathname = usePathname()
-  const { user } = useAuth()
-  const isSub = user?.role === 'SUB_ADMIN'
-
-  const links = allLinks.filter((link) => {
-    if ('adminOnly' in link && link.adminOnly) return !isSub
-    return true
-  })
 
   const isActive = (href: string) => {
     if (href === '/admin') return pathname === '/admin'
@@ -70,9 +54,7 @@ export function AdminSidebar({ open, onClose }: AdminSidebarProps) {
             <span className="truncate text-xs font-semibold uppercase tracking-wider text-zinc-500">
               Cia do Disfarce
             </span>
-            <span className="font-bold text-white">
-              {isSub ? 'Sub-admin' : 'Admin'}
-            </span>
+            <span className="font-bold text-white">Admin</span>
           </div>
           <button className="text-slate-400 lg:hidden" onClick={onClose}>
             <X className="h-5 w-5" />
@@ -87,7 +69,6 @@ export function AdminSidebar({ open, onClose }: AdminSidebarProps) {
               <Link
                 key={link.href}
                 href={link.href}
-                title={link.label}
                 onClick={onClose}
                 className={`
                   flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium
@@ -99,22 +80,12 @@ export function AdminSidebar({ open, onClose }: AdminSidebarProps) {
                   }
                 `}
               >
-                <Icon className="h-5 w-5 shrink-0" />
-                <span className="min-w-0 leading-snug">{link.label}</span>
+                <Icon className="h-5 w-5" />
+                {link.label}
               </Link>
             )
           })}
         </nav>
-
-        <div className="border-t border-white/10 px-3 py-4">
-          <Link
-            href="/"
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
-          >
-            <Home className="h-5 w-5 shrink-0" />
-            <span>Voltar ao início</span>
-          </Link>
-        </div>
       </aside>
     </>
   )

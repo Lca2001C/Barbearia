@@ -9,13 +9,8 @@ export interface User {
   name: string
   email: string
   phone?: string
-  role: 'CLIENT' | 'ADMIN' | 'SUB_ADMIN'
-  managedBarberId?: string | null
+  role: 'CLIENT' | 'ADMIN'
   avatarUrl?: string
-}
-
-export function isStaffRole(role: User['role']): boolean {
-  return role === 'ADMIN' || role === 'SUB_ADMIN'
 }
 
 export function getUser(): User | null {

@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
+    container_name: barbearia_db
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER:-barbearia}
@@ -8,8 +9,6 @@ services:
       POSTGRES_DB: ${DB_NAME:-barbearia}
     ports:
       - "${DB_PORT:-5434}:5432"
-    expose:
-      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -17,13 +16,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    networks:
-      - app_net
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    container_name: barbearia_api
     restart: unless-stopped
     env_file:
       - .env
@@ -33,38 +31,36 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-https://localhost:8443}
       FRONTEND_URL: ${APP_URL:-https://localhost:8443}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
-    expose:
-      - "${APP_BACKEND_PORT:-3335}"
+    ports:
+      - "127.0.0.1:${APP_BACKEND_PORT:-3335}:${APP_BACKEND_PORT:-3335}"
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
       - ./backend:/app
       - /app/node_modules
-    networks:
-      - app_net
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    container_name: barbearia_web
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://localhost:8443/api}
       NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
-    expose:
-      - "3000"
+    ports:
+      - "127.0.0.1:${APP_FRONTEND_PORT:-3100}:3000"
     depends_on:
       - backend
     volumes:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules
       - frontend_next_cache:/app/.next
-    networks:
-      - app_net
 
   caddy:
     image: caddy:2-alpine
+    container_name: barbearia_proxy
     restart: unless-stopped
     depends_on:
       - frontend
@@ -76,8 +72,6 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
-    networks:
-      - app_net
 
 volumes:
   postgres_data:
@@ -85,7 +79,3 @@ volumes:
   frontend_next_cache:
   caddy_data:
   caddy_config:
-
-networks:
-  app_net:
-    driver: bridge

@@ -20,14 +20,12 @@ interface AuthContextData {
   user: User | null
   loading: boolean
   isAuthenticated: boolean
-  login: (identifier: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<void>
   register: (
     name: string,
     email: string,
     password: string,
-    phone?: string,
-    username?: string,
-    confirmPassword?: string
+    phone?: string
   ) => Promise<void>
   forgotPassword: (email: string) => Promise<void>
   resetPassword: (token: string, password: string) => Promise<void>
@@ -59,8 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchUser])
 
   const login = useCallback(
-    async (identifier: string, password: string) => {
-      const { data } = await api.post('/auth/login', { identifier, password })
+    async (email: string, password: string) => {
+      const { data } = await api.post('/auth/login', { email, password })
       const { user: userData } = data.data
       setUser(userData)
       storeUser(userData)
@@ -70,22 +68,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const register = useCallback(
-    async (
-      name: string,
-      email: string,
-      password: string,
-      phone?: string,
-      username?: string,
-      confirmPassword?: string
-    ) => {
-      const { data } = await api.post('/auth', {
-        name,
-        email,
-        password,
-        phone,
-        username,
-        confirmPassword: confirmPassword ?? password,
-      })
+    async (name: string, email: string, password: string, phone?: string) => {
+      const { data } = await api.post('/auth', { name, email, password, phone })
       const { user: userData } = data.data
       setUser(userData)
       storeUser(userData)

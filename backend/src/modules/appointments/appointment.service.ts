@@ -1,11 +1,7 @@
-import { AppointmentStatus, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { AppError } from '../../shared/errors/AppError';
-import {
-  CreateAppointmentByAdminInput,
-  CreateAppointmentInput,
-  UpdateAppointmentByAdminInput,
-} from './appointment.schema';
+import { CreateAppointmentInput } from './appointment.schema';
 
 const appointmentIncludes = {
   barber: true,
@@ -17,68 +13,6 @@ const appointmentIncludes = {
 interface DateRangeInput {
   startDate?: string;
   endDate?: string;
-  barberId?: string;
-}
-
-export interface StaffContext {
-  role: Role;
-  managedBarberId?: string | null;
-}
-
-function assertStaffOwnsAppointment(
-  appointment: { barberId: string },
-  staff: StaffContext,
-) {
-  if (staff.role === 'SUB_ADMIN') {
-    if (!staff.managedBarberId || appointment.barberId !== staff.managedBarberId) {
-      throw new AppError('Acesso não autorizado', 403);
-    }
-  }
-}
-
-async function assertUserExists(userId: string) {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) {
-    throw new AppError('Cliente não encontrado', 404);
-  }
-}
-
-async function assertBarberExists(barberId: string) {
-  const barber = await prisma.barber.findUnique({ where: { id: barberId } });
-  if (!barber) {
-    throw new AppError('Barbeiro não encontrado', 404);
-  }
-}
-
-async function getServiceOrThrow(serviceId: string) {
-  const service = await prisma.service.findUnique({ where: { id: serviceId } });
-  if (!service) {
-    throw new AppError('Serviço não encontrado', 404);
-  }
-  return service;
-}
-
-async function assertNoTimeConflict(params: {
-  barberId: string;
-  dateTime: Date;
-  endTime: Date;
-  ignoreAppointmentId?: string;
-}) {
-  const conflict = await prisma.appointment.findFirst({
-    where: {
-      barberId: params.barberId,
-      id: params.ignoreAppointmentId
-        ? { not: params.ignoreAppointmentId }
-        : undefined,
-      status: { not: 'CANCELLED' },
-      dateTime: { lt: params.endTime },
-      endTime: { gt: params.dateTime },
-    },
-  });
-
-  if (conflict) {
-    throw new AppError('Horário indisponível', 409);
-  }
 }
 
 function buildRangeWithFallback(input: DateRangeInput, fallback: 'today' | 'week') {
@@ -107,14 +41,26 @@ function buildRangeWithFallback(input: DateRangeInput, fallback: 'today' | 'week
 }
 
 export async function createAppointment(userId: string, data: CreateAppointmentInput) {
-  await assertUserExists(userId);
-  await assertBarberExists(data.barberId);
-  const service = await getServiceOrThrow(data.serviceId);
+  const service = await prisma.service.findUnique({ where: { id: data.serviceId } });
+  if (!service) {
+    throw new AppError('Serviço não encontrado', 404);
+  }
 
   const dateTime = new Date(data.dateTime);
   const endTime = new Date(dateTime.getTime() + service.duration * 60 * 1000);
 
-  await assertNoTimeConflict({ barberId: data.barberId, dateTime, endTime });
+  const conflict = await prisma.appointment.findFirst({
+    where: {
+      barberId: data.barberId,
+      status: { not: 'CANCELLED' },
+      dateTime: { lt: endTime },
+      endTime: { gt: dateTime },
+    },
+  });
+
+  if (conflict) {
+    throw new AppError('Horário indisponível', 409);
+  }
 
   return prisma.appointment.create({
     data: {
@@ -130,43 +76,8 @@ export async function createAppointment(userId: string, data: CreateAppointmentI
   });
 }
 
-export async function createAppointmentByAdmin(data: CreateAppointmentByAdminInput) {
-  await assertUserExists(data.userId);
-  await assertBarberExists(data.barberId);
-  const service = await getServiceOrThrow(data.serviceId);
-
-  const dateTime = new Date(data.dateTime);
-  const endTime = new Date(dateTime.getTime() + service.duration * 60 * 1000);
-  await assertNoTimeConflict({ barberId: data.barberId, dateTime, endTime });
-
-  return prisma.appointment.create({
-    data: {
-      userId: data.userId,
-      barberId: data.barberId,
-      serviceId: data.serviceId,
-      dateTime,
-      endTime,
-      notes: data.notes,
-      status: data.status ?? 'CONFIRMED',
-    },
-    include: appointmentIncludes,
-  });
-}
-
-export async function listAppointments(
-  userId: string,
-  role: Role,
-  managedBarberId?: string | null,
-) {
-  let where: { userId?: string; barberId?: string } = {};
-  if (role === 'CLIENT') {
-    where = { userId };
-  } else if (role === 'SUB_ADMIN') {
-    if (!managedBarberId) {
-      throw new AppError('Sub-admin sem barbeiro vinculado', 403);
-    }
-    where = { barberId: managedBarberId };
-  }
+export async function listAppointments(userId: string, role: Role) {
+  const where = role === 'CLIENT' ? { userId } : {};
 
   return prisma.appointment.findMany({
     where,
@@ -175,12 +86,7 @@ export async function listAppointments(
   });
 }
 
-export async function getAppointment(
-  id: string,
-  userId: string,
-  role: Role,
-  managedBarberId?: string | null,
-) {
+export async function getAppointment(id: string, userId: string, role: Role) {
   const appointment = await prisma.appointment.findUnique({
     where: { id },
     include: appointmentIncludes,
@@ -194,19 +100,10 @@ export async function getAppointment(
     throw new AppError('Acesso não autorizado', 403);
   }
 
-  if (role === 'SUB_ADMIN') {
-    assertStaffOwnsAppointment(appointment, { role, managedBarberId });
-  }
-
   return appointment;
 }
 
-export async function cancelAppointment(
-  id: string,
-  userId: string,
-  role: Role,
-  managedBarberId?: string | null,
-) {
+export async function cancelAppointment(id: string, userId: string, role: Role) {
   const appointment = await prisma.appointment.findUnique({ where: { id } });
 
   if (!appointment) {
@@ -215,10 +112,6 @@ export async function cancelAppointment(
 
   if (role === 'CLIENT' && appointment.userId !== userId) {
     throw new AppError('Acesso não autorizado', 403);
-  }
-
-  if (role === 'SUB_ADMIN') {
-    assertStaffOwnsAppointment(appointment, { role, managedBarberId });
   }
 
   if (!['PENDING', 'CONFIRMED'].includes(appointment.status)) {
@@ -232,14 +125,12 @@ export async function cancelAppointment(
   });
 }
 
-export async function completeAppointment(id: string, staff: StaffContext) {
+export async function completeAppointment(id: string) {
   const appointment = await prisma.appointment.findUnique({ where: { id } });
 
   if (!appointment) {
     throw new AppError('Agendamento não encontrado', 404);
   }
-
-  assertStaffOwnsAppointment(appointment, staff);
 
   return prisma.appointment.update({
     where: { id },
@@ -248,89 +139,11 @@ export async function completeAppointment(id: string, staff: StaffContext) {
   });
 }
 
-export async function updateAppointmentByAdmin(
-  id: string,
-  data: UpdateAppointmentByAdminInput,
-  staff: StaffContext,
-) {
-  const existing = await prisma.appointment.findUnique({
-    where: { id },
-    include: { service: true },
-  });
-  if (!existing) {
-    throw new AppError('Agendamento não encontrado', 404);
-  }
-
-  assertStaffOwnsAppointment(existing, staff);
-  if (staff.role === 'SUB_ADMIN' && data.barberId && data.barberId !== staff.managedBarberId) {
-    throw new AppError('Acesso não autorizado', 403);
-  }
-
-  const userId = data.userId ?? existing.userId;
-  const barberId = data.barberId ?? existing.barberId;
-  const serviceId = data.serviceId ?? existing.serviceId;
-  const dateTime = data.dateTime ? new Date(data.dateTime) : existing.dateTime;
-
-  if (data.userId) await assertUserExists(data.userId);
-  if (data.barberId) await assertBarberExists(data.barberId);
-
-  const service = data.serviceId
-    ? await getServiceOrThrow(data.serviceId)
-    : existing.service;
-  const endTime = new Date(dateTime.getTime() + service.duration * 60 * 1000);
-
-  if (barberId !== existing.barberId || dateTime.getTime() !== existing.dateTime.getTime() || serviceId !== existing.serviceId) {
-    await assertNoTimeConflict({
-      barberId,
-      dateTime,
-      endTime,
-      ignoreAppointmentId: id,
-    });
-  }
-
-  const payload: {
-    userId: string;
-    barberId: string;
-    serviceId: string;
-    dateTime: Date;
-    endTime: Date;
-    notes?: string;
-    status?: AppointmentStatus;
-  } = {
-    userId,
-    barberId,
-    serviceId,
-    dateTime,
-    endTime,
-  };
-
-  if (data.notes !== undefined) payload.notes = data.notes;
-  if (data.status !== undefined) payload.status = data.status;
-
-  return prisma.appointment.update({
-    where: { id },
-    data: payload,
-    include: appointmentIncludes,
-  });
-}
-
-export async function deleteAppointmentByAdmin(id: string, staff: StaffContext) {
-  const appointment = await prisma.appointment.findUnique({ where: { id } });
-  if (!appointment) {
-    throw new AppError('Agendamento não encontrado', 404);
-  }
-
-  assertStaffOwnsAppointment(appointment, staff);
-
-  await prisma.appointment.delete({ where: { id } });
-}
-
-export async function getUpcoming(barberId?: string) {
+export async function getUpcoming() {
   return prisma.appointment.findMany({
     where: {
       status: { in: ['PENDING', 'CONFIRMED'] },
       dateTime: { gte: new Date() },
-      ...(barberId ? { barberId } : {}),
     },
     include: appointmentIncludes,
     orderBy: { dateTime: 'asc' },
@@ -340,13 +153,11 @@ export async function getUpcoming(barberId?: string) {
 
 export async function getTodayAppointments(input: DateRangeInput = {}) {
   const { start, end } = buildRangeWithFallback(input, 'today');
-  const barberScope = input.barberId ? { barberId: input.barberId } : {};
 
   return prisma.appointment.findMany({
     where: {
       status: { in: ['PENDING', 'CONFIRMED'] },
       dateTime: { gte: start, lt: end },
-      ...barberScope,
     },
     include: appointmentIncludes,
     orderBy: { dateTime: 'asc' },
@@ -355,13 +166,11 @@ export async function getTodayAppointments(input: DateRangeInput = {}) {
 
 export async function getWeekAppointments(input: DateRangeInput = {}) {
   const { start, end } = buildRangeWithFallback(input, 'week');
-  const barberScope = input.barberId ? { barberId: input.barberId } : {};
 
   return prisma.appointment.findMany({
     where: {
       status: { in: ['PENDING', 'CONFIRMED'] },
       dateTime: { gte: start, lt: end },
-      ...barberScope,
     },
     include: appointmentIncludes,
     orderBy: { dateTime: 'asc' },

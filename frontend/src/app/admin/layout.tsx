@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Menu, Loader2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { isStaffRole } from '@/lib/auth'
 import { AdminSidebar } from '@/components/layout/AdminSidebar'
 
 export default function AdminLayout({
@@ -17,7 +16,7 @@ export default function AdminLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
-    if (!loading && (!user || !isStaffRole(user.role))) {
+    if (!loading && (!user || user.role !== 'ADMIN')) {
       router.push('/')
     }
   }, [loading, user, router])
@@ -30,7 +29,7 @@ export default function AdminLayout({
     )
   }
 
-  if (!user || !isStaffRole(user.role)) return null
+  if (!user || user.role !== 'ADMIN') return null
 
   return (
     <div className="flex min-h-screen">
@@ -45,7 +44,7 @@ export default function AdminLayout({
             <Menu className="h-6 w-6" />
           </button>
           <h1 className="text-lg font-semibold text-white">
-            {user.role === 'SUB_ADMIN' ? 'Meu painel' : 'Painel Administrativo'}
+            Painel Administrativo
           </h1>
         </header>
 

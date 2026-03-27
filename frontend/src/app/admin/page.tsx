@@ -17,7 +17,6 @@ import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import toast from 'react-hot-toast'
 import api from '@/lib/api'
-import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
 
 interface DashboardStats {
@@ -40,8 +39,6 @@ interface Appointment {
 }
 
 export default function AdminDashboardPage() {
-  const { user } = useAuth()
-  const isSub = user?.role === 'SUB_ADMIN'
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([])
   const [weekAppointments, setWeekAppointments] = useState<Appointment[]>([])
@@ -81,6 +78,10 @@ export default function AdminDashboardPage() {
     const weekEnd = new Date(weekStart)
     weekEnd.setDate(weekEnd.getDate() + 7)
 
+    // #region agent log
+    fetch('http://127.0.0.1:7772/ingest/efa8c094-3985-4d28-bcde-0c4cf7f1376c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ff99de'},body:JSON.stringify({sessionId:'ff99de',runId:'initial',hypothesisId:'H1',location:'frontend/src/app/admin/page.tsx:useEffect:start',message:'Dashboard fetch cycle started',data:{todayStart:todayStart.toISOString(),todayEnd:todayEnd.toISOString(),weekStart:weekStart.toISOString(),weekEnd:weekEnd.toISOString()},timestamp:Date.now()})}).catch(()=>{})
+    // #endregion
+
     Promise.allSettled([
       api.get('/dashboard/stats', {
         params: {
@@ -102,6 +103,9 @@ export default function AdminDashboardPage() {
       }),
     ])
       .then(([statsRes, todayRes, weekRes]) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7772/ingest/efa8c094-3985-4d28-bcde-0c4cf7f1376c',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ff99de'},body:JSON.stringify({sessionId:'ff99de',runId:'initial',hypothesisId:'H1',location:'frontend/src/app/admin/page.tsx:useEffect:allSettled',message:'Dashboard requests settled',data:{statsStatus:statsRes.status,todayStatus:todayRes.status,weekStatus:weekRes.status},timestamp:Date.now()})}).catch(()=>{})
+        // #endregion
         const hasErrors =
           statsRes.status === 'rejected' ||
           todayRes.status === 'rejected' ||
@@ -199,14 +203,8 @@ export default function AdminDashboardPage() {
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-white">Dashboard</h2>
         <p className="mt-1 text-sm text-slate-400">
-          {isSub
-            ? 'Visão apenas dos seus agendamentos e receita como barbeiro vinculado.'
-            : 'Valores de receita somam o preço do serviço dos agendamentos marcados como '}
-          {!isSub && (
-            <>
-              <span className="text-slate-300">concluídos</span>.
-            </>
-          )}
+          Valores de receita somam o preço do serviço dos agendamentos marcados como{' '}
+          <span className="text-slate-300">concluídos</span>.
         </p>
       </div>
 
