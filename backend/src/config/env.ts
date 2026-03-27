@@ -7,12 +7,12 @@ function emptyToUndefined(value: unknown) {
   return value;
 }
 
-const envSchema = z.object({
+const envSchemaObject = z.object({
   DATABASE_URL: z
     .string()
     .min(1, 'DATABASE_URL é obrigatória')
     .refine(
-      (s) => s.startsWith('postgresql://') || s.startsWith('postgres://'),
+      (s: string) => s.startsWith('postgresql://') || s.startsWith('postgres://'),
       'DATABASE_URL deve ser uma URL PostgreSQL',
     ),
   JWT_SECRET: z.string().min(1),
@@ -24,7 +24,7 @@ const envSchema = z.object({
   COOKIE_SECURE: z
     .string()
     .optional()
-    .transform((value) => value === 'true'),
+    .transform((value: string | undefined) => value === 'true'),
   COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   PORT: z.coerce.number().default(3335),
   CORS_ORIGIN: z.string().default('https://localhost:8443'),
@@ -44,6 +44,27 @@ const envSchema = z.object({
   /** 0 = desliga o rate limit (útil só em dev local). Padrão: 2000 req / janela. */
   RATE_LIMIT_MAX: z.coerce.number().default(2000),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
+});
+
+type EnvSchemaOut = z.infer<typeof envSchemaObject>;
+
+const envSchema = envSchemaObject.superRefine((data: EnvSchemaOut, ctx: z.RefinementCtx) => {
+  if (data.COOKIE_SAMESITE === 'none' && !data.COOKIE_SECURE) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        'COOKIE_SAMESITE=none exige COOKIE_SECURE=true. Navegadores só enviam cookies SameSite=None em conexões seguras (HTTPS).',
+      path: ['COOKIE_SAMESITE'],
+    });
+  }
+  if (data.COOKIE_SAMESITE === 'none' && !/^https:\/\//i.test(data.FRONTEND_URL)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        'Com COOKIE_SAMESITE=none, FRONTEND_URL deve usar HTTPS (ex.: https://localhost:8443). Certificados self-signed exigem confiança manual no navegador ou os cookies não serão enviados.',
+      path: ['FRONTEND_URL'],
+    });
+  }
 });
 
 export const env = envSchema.parse(process.env);

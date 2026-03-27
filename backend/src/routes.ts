@@ -9,6 +9,7 @@ import { notificationRoutes } from './modules/notifications/notification.routes'
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes';
 import { stockRoutes } from './modules/stock/stock.routes';
 
+/** Rotas da API montadas em `/api`. Imports inválidos falham no build (`tsc`) ou ao subir o servidor. */
 const routes = Router();
 
 routes.get('/health', (_req, res) => {
@@ -23,6 +24,6 @@ routes.use('/appointments', appointmentRoutes);
 routes.use('/payments', paymentRoutes);
 routes.use('/notifications', notificationRoutes);
 routes.use('/dashboard', dashboardRoutes);
-routes.use('/stock', stockRoutes);
+routes.use('/stock', stockRoutes); // estoque por barbeiro (ADMIN / SUB_ADMIN)
 
 export { routes };
