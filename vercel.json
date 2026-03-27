@@ -1,11 +1,5 @@
 {
-  "framework": "nextjs",
-  "rootDirectory": "frontend",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "installCommand": "npm install",
-  "env": {
-    "NEXT_PUBLIC_API_URL": "@next_public_api_url",
-    "NEXT_PUBLIC_VAPID_PUBLIC_KEY": "@next_public_vapid_public_key"
-  }
+  "installCommand": "npm install"
 }
