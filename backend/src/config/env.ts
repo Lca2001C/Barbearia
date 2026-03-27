@@ -27,8 +27,13 @@ const envSchema = z.object({
     .transform((value) => value === 'true'),
   COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   PORT: z.coerce.number().default(3335),
+<<<<<<< Current (Your changes)
   CORS_ORIGIN: z.string().default('https://app.localhost:8443'),
   FRONTEND_URL: z.string().default('https://app.localhost:8443'),
+=======
+  CORS_ORIGIN: z.string().default('https://localhost:8443'),
+  FRONTEND_URL: z.string().default('https://localhost:8443'),
+>>>>>>> Incoming (Background Agent changes)
   PASSWORD_RESET_TOKEN_TTL_MINUTES: z.coerce.number().default(15),
   SMTP_HOST: z.preprocess(emptyToUndefined, z.string().optional()),
   SMTP_PORT: z.preprocess(emptyToUndefined, z.coerce.number().optional()),

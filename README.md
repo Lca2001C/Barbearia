@@ -65,31 +65,31 @@ Barbearia/
 
 - [Docker](https://docs.docker.com/get-docker/) e [Docker Compose](https://docs.docker.com/compose/install/)
 
-### Passos
+### Passos (Windows PowerShell)
 
 1. Clone o repositório e entre na pasta:
 
-```bash
+```powershell
 cd Barbearia
 ```
 
 2. Copie o arquivo de variáveis de ambiente:
 
-```bash
-cp .env.example .env
+```powershell
+Copy-Item .env.example .env
 ```
 
 3. Suba todos os serviços com um único comando:
 
-```bash
-docker-compose up --build
+```powershell
+docker compose up --build -d
 ```
 
 4. Em outro terminal, rode as migrações e o seed:
 
-```bash
-docker-compose exec backend npx prisma migrate dev --name init
-docker-compose exec backend npm run prisma:seed
+```powershell
+docker compose exec backend npx prisma migrate dev --name init
+docker compose exec backend npm run prisma:seed
 ```
 
 5. Acesse a aplicação:
@@ -100,16 +100,119 @@ docker-compose exec backend npm run prisma:seed
 | API (HTTPS)            | https://localhost:8443/api                   |
 | Frontend (HTTP proxy)  | http://localhost:8080                        |
 | API (HTTP proxy)       | http://localhost:8080/api                    |
-| PostgreSQL             | localhost:5434                               |
-| Prisma                 | `docker-compose exec backend npx prisma studio` |
+| PostgreSQL             | localhost:5544                               |
+| Prisma                 | `docker compose exec backend npx prisma studio` |
+
+### Passos (macOS/Linux)
+
+1. Entre na pasta do projeto:
+
+```bash
+cd Barbearia
+```
+
+2. Copie o arquivo de ambiente:
+
+```bash
+cp .env.example .env
+```
+
+3. Suba os serviços:
+
+```bash
+docker compose up --build -d
+```
+
+4. Rode migrações e seed:
+
+```bash
+docker compose exec backend npx prisma migrate dev --name init
+docker compose exec backend npm run prisma:seed
+```
+
+5. Acesse a aplicação:
+
+| Serviço                | URL/Porta                                    |
+| ---------------------- | --------------------------------------------- |
+| Frontend (HTTPS)       | https://localhost:8443                       |
+| API (HTTPS)            | https://localhost:8443/api                   |
+| Frontend (HTTP proxy)  | http://localhost:8080                        |
+| API (HTTP proxy)       | http://localhost:8080/api                    |
+| PostgreSQL             | localhost:5544                               |
+| Prisma                 | `docker compose exec backend npx prisma studio` |
 
 > O ambiente usa **Caddy** como proxy reverso com TLS local (`tls internal`), fazendo a terminação HTTPS.
 > `frontend` e `backend` ficam na rede interna do Docker e são roteados pelo proxy.
+> `frontend`, `backend` e `postgres` usam `expose` para tráfego interno; apenas proxy (`8080/8443`) e banco (`5544`) ficam publicados no host.
 
 ### Credenciais do Admin (seed)
 
 - **Email**: admin@barbearia.com
 - **Senha**: admin123
+
+## Ambiente de Staging (Pre-Producao)
+
+O staging roda builds compilados (produção) com banco de dados isolado, em portas separadas do DEV.
+
+| Ambiente | Comando para subir | URL | Banco |
+| -------- | ------------------ | --- | ----- |
+| DEV | `docker compose up -d` | https://localhost:8443 | `barbearia` |
+| STAGING | `.\scripts\staging.ps1 up` | https://localhost:9443 | `barbearia_staging` |
+
+### Subir o staging (Windows PowerShell)
+
+```powershell
+.\scripts\staging.ps1 up
+```
+
+### Rodar seed no staging
+
+```powershell
+.\scripts\staging.ps1 seed
+```
+
+### Outros comandos do script
+
+```powershell
+.\scripts\staging.ps1 down     # parar staging
+.\scripts\staging.ps1 logs     # ver logs em tempo real
+.\scripts\staging.ps1 ps       # listar containers
+.\scripts\staging.ps1 build    # rebuild sem subir
+.\scripts\staging.ps1 reset    # destruir tudo (volumes incluidos)
+```
+
+### Subir o staging (macOS/Linux)
+
+```bash
+docker compose -p bhd-staging \
+  -f docker-compose.staging.yml \
+  --env-file .env.staging \
+  up -d --build
+```
+
+### URLs do staging
+
+| Servico           | URL                        |
+| ----------------- | -------------------------- |
+| Frontend (HTTPS)  | https://localhost:9443     |
+| API (HTTPS)       | https://localhost:9443/api |
+| PostgreSQL        | localhost:5545             |
+
+### Credenciais de teste (seed)
+
+| Role      | Email                    | Senha       |
+| --------- | ------------------------ | ----------- |
+| ADMIN     | admin@barbearia.com      | admin123    |
+| SUB_ADMIN | subadmin@barbearia.com   | subadmin123 |
+| USER      | user@barbearia.com       | user123     |
+
+### Fluxo recomendado
+
+1. Desenvolva e teste localmente no **DEV** (`docker compose up -d`)
+2. Suba para **STAGING** (`.\scripts\staging.ps1 up`)
+3. Teste login, permissoes, CRUD, dashboard, regra de ADMIN unico
+4. Corrija erros encontrados
+5. Somente entao faca deploy para **PROD**
 
 ## Desenvolvimento Local (sem Docker)
 
@@ -120,9 +223,9 @@ docker-compose exec backend npm run prisma:seed
 
 ### Backend
 
-```bash
+```powershell
 cd backend
-cp .env.example .env          # Edite com suas credenciais do banco
+Copy-Item .env.example .env          # Edite com suas credenciais do banco
 npm install
 npx prisma generate
 npx prisma migrate dev --name init
@@ -132,11 +235,20 @@ npm run dev                    # http://localhost:3335
 
 ### Frontend
 
-```bash
+```powershell
 cd frontend
-cp .env.example .env.local
+Copy-Item .env.example .env.local
 npm install
 npm run dev                    # http://localhost:3100
+```
+
+### Dica de comandos no Windows
+
+- Em vez de `&&`, use `;` no PowerShell.
+- Para testar API HTTPS no terminal do Windows, prefira:
+
+```powershell
+curl.exe -k https://localhost:8443/api/health
 ```
 
 ## Variáveis de Ambiente
@@ -271,9 +383,9 @@ fly secrets set NEXT_PUBLIC_API_URL="https://seu-backend.fly.dev/api"
 ## Troubleshooting (HTTPS e Docker)
 
 - **Porta em uso**: ajuste `APP_HTTP_PORT`, `APP_HTTPS_PORT` e `DB_PORT` no `.env`.
-- **Container com nome em conflito**: rode `docker-compose down` e depois `docker rm -f barbearia_web barbearia_api barbearia_db barbearia_proxy` se necessário.
+- **Conflito entre projetos Docker**: rode `docker compose down` no projeto antigo e use `docker ps` para identificar quem ocupa `8080`, `8443` ou `5544`.
 - **Certificado local no navegador**: no primeiro acesso HTTPS, aceite o certificado local gerado pelo Caddy (ambiente de desenvolvimento).
-- **API não responde no HTTPS**: confira se `barbearia_proxy`, `barbearia_api` e `barbearia_web` estão `Up` com `docker ps`.
+- **API não responde no HTTPS**: confirme `caddy`, `backend` e `frontend` em `docker compose ps` e teste `curl.exe -k https://localhost:8443/api/health`.
 
 ## Licença
 

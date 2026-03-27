@@ -13,6 +13,8 @@ async function sumCompletedServiceRevenue(where: Prisma.AppointmentWhereInput) {
 interface StatsRangeInput {
   startDate?: string;
   endDate?: string;
+  /** Quando definido, estatísticas ficam restritas a este barbeiro (sub-admin). */
+  barberId?: string;
 }
 
 function parseCustomRange(input: StatsRangeInput): { start: Date; end: Date } | null {
@@ -27,6 +29,7 @@ function parseCustomRange(input: StatsRangeInput): { start: Date; end: Date } | 
 
 export async function getStats(input: StatsRangeInput = {}) {
   const now = new Date();
+  const barberScope = input.barberId ? { barberId: input.barberId } : {};
 
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const todayEnd = new Date(todayStart);
@@ -50,27 +53,42 @@ export async function getStats(input: StatsRangeInput = {}) {
     appointmentsThisWeek,
   ] = await Promise.all([
     sumCompletedServiceRevenue(
-      customRange ? { dateTime: { gte: customRange.start, lt: customRange.end } } : {},
+      customRange
+        ? { dateTime: { gte: customRange.start, lt: customRange.end }, ...barberScope }
+        : { ...barberScope },
     ),
     prisma.appointment.count({
       where: {
         status: { not: 'CANCELLED' },
         dateTime: { gte: todayStart, lt: todayEnd },
+        ...barberScope,
       },
     }),
-    prisma.user.count({
-      where: { role: 'CLIENT' },
-    }),
-    prisma.barber.count({
-      where: { active: true },
-    }),
+    input.barberId
+      ? prisma.user.count({
+          where: {
+            appointments: { some: { barberId: input.barberId } },
+          },
+        })
+      : prisma.user.count({
+          where: { role: 'CLIENT' },
+        }),
+    input.barberId
+      ? prisma.barber.count({
+          where: { id: input.barberId, active: true },
+        })
+      : prisma.barber.count({
+          where: { active: true },
+        }),
     sumCompletedServiceRevenue({
       dateTime: { gte: monthStart, lt: monthEnd },
+      ...barberScope,
     }),
     prisma.appointment.count({
       where: {
         status: { not: 'CANCELLED' },
         dateTime: { gte: weekStart, lt: weekEnd },
+        ...barberScope,
       },
     }),
   ]);

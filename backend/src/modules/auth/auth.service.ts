@@ -7,23 +7,29 @@ import { AppError } from '../../shared/errors/AppError';
 import { ForgotPasswordInput, LoginInput, RegisterInput, ResetPasswordInput } from './auth.schema';
 import { sendPasswordResetTokenEmail } from './mail.service';
 
-type AuthTokenUser = { id: string; role: string };
+type AuthTokenUser = { id: string; role: string; managedBarberId?: string | null };
+
+function buildJwtPayload(user: AuthTokenUser) {
+  const payload: { id: string; role: string; managedBarberId?: string } = {
+    id: user.id,
+    role: user.role,
+  };
+  if (user.managedBarberId) {
+    payload.managedBarberId = user.managedBarberId;
+  }
+  return payload;
+}
 
 function generateTokens(user: AuthTokenUser) {
   const accessExpiresIn = env.ACCESS_TOKEN_TTL as jwt.SignOptions['expiresIn'];
   const refreshExpiresIn = env.REFRESH_TOKEN_TTL as jwt.SignOptions['expiresIn'];
+  const payload = buildJwtPayload(user);
 
-  const accessToken = jwt.sign(
-    { id: user.id, role: user.role },
-    env.JWT_SECRET,
-    { expiresIn: accessExpiresIn },
-  );
+  const accessToken = jwt.sign(payload, env.JWT_SECRET, { expiresIn: accessExpiresIn });
 
-  const refreshToken = jwt.sign(
-    { id: user.id, role: user.role },
-    env.JWT_REFRESH_SECRET,
-    { expiresIn: refreshExpiresIn },
-  );
+  const refreshToken = jwt.sign(payload, env.JWT_REFRESH_SECRET, {
+    expiresIn: refreshExpiresIn,
+  });
 
   return { accessToken, refreshToken };
 }
@@ -33,7 +39,47 @@ function excludePassword(user: { password: string } & Record<string, unknown>) {
   return userWithoutPassword;
 }
 
+function normalizeUsername(raw: string) {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_')
+    .replace(/_{2,}/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 30);
+}
+
+async function getAvailableUsername(preferred: string) {
+  let base = normalizeUsername(preferred);
+  if (base.length < 3) base = `user_${Date.now().toString().slice(-6)}`;
+  let candidate = base;
+  let idx = 1;
+
+  while (await prisma.user.findUnique({ where: { username: candidate } })) {
+    idx += 1;
+    candidate = `${base}_${idx}`.slice(0, 30);
+  }
+
+  return candidate;
+}
+
 export async function register(data: RegisterInput) {
+  const normalizedRequestedUsername = data.username
+    ? normalizeUsername(data.username)
+    : undefined;
+  if (normalizedRequestedUsername && normalizedRequestedUsername.length < 3) {
+    throw new AppError('Username inválido', 400);
+  }
+
+  if (normalizedRequestedUsername) {
+    const existingUsername = await prisma.user.findUnique({
+      where: { username: normalizedRequestedUsername },
+    });
+    if (existingUsername) {
+      throw new AppError('Username já cadastrado', 409);
+    }
+  }
+
   const existing = await prisma.user.findUnique({ where: { email: data.email } });
   if (existing) {
     throw new AppError('Email já cadastrado', 409);
@@ -55,6 +101,9 @@ export async function register(data: RegisterInput) {
     data: {
       name: data.name,
       email: data.email,
+      username:
+        normalizedRequestedUsername ??
+        (await getAvailableUsername(data.email.split('@')[0] ?? data.name)),
       phone: data.phone,
       password: hashedPassword,
     },
@@ -66,7 +115,12 @@ export async function register(data: RegisterInput) {
 }
 
 export async function login(data: LoginInput) {
-  let user = await prisma.user.findUnique({ where: { email: data.email } });
+  const identifier = (data.identifier ?? data.email ?? '').toLowerCase().trim();
+  let user = await prisma.user.findFirst({
+    where: {
+      OR: [{ email: identifier }, { username: identifier }],
+    },
+  });
   if (!user) {
     throw new AppError('Credenciais inválidas', 401);
   }
