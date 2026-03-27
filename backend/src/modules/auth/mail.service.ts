@@ -33,9 +33,7 @@ export async function sendPasswordResetTokenEmail({
   const transporter = buildTransport();
 
   if (!transporter) {
-    console.warn(
-      `[auth] SMTP não configurado. Token de reset para ${to}: ${token}. URL: ${resetUrl}`,
-    );
+    console.warn('[auth] SMTP não configurado. E-mail de reset não foi enviado.');
     return;
   }
 

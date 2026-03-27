@@ -1,5 +1,14 @@
 import { Request, Response } from 'express';
 import * as serviceService from './service.service';
+import { AppError } from '../../shared/errors/AppError';
+
+function getParam(value: string | string[] | undefined, name: string) {
+  const normalized = Array.isArray(value) ? value[0] : value;
+  if (!normalized) {
+    throw new AppError(`Parâmetro ${name} é obrigatório`, 400);
+  }
+  return normalized;
+}
 
 export async function listServicesHandler(req: Request, res: Response) {
   const isAdmin = req.user?.role === 'ADMIN';
@@ -8,7 +17,8 @@ export async function listServicesHandler(req: Request, res: Response) {
 }
 
 export async function getServiceHandler(req: Request, res: Response) {
-  const service = await serviceService.getService(req.params.id);
+  const serviceId = getParam(req.params.id, 'id');
+  const service = await serviceService.getService(serviceId);
   return res.json({ data: service });
 }
 
@@ -18,11 +28,13 @@ export async function createServiceHandler(req: Request, res: Response) {
 }
 
 export async function updateServiceHandler(req: Request, res: Response) {
-  const service = await serviceService.updateService(req.params.id, req.body);
+  const serviceId = getParam(req.params.id, 'id');
+  const service = await serviceService.updateService(serviceId, req.body);
   return res.json({ data: service });
 }
 
 export async function deleteServiceHandler(req: Request, res: Response) {
-  await serviceService.deleteService(req.params.id);
+  const serviceId = getParam(req.params.id, 'id');
+  await serviceService.deleteService(serviceId);
   return res.status(204).send();
 }

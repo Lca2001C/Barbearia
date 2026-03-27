@@ -2,16 +2,12 @@ import { Request, Response } from 'express';
 import * as authService from './auth.service';
 import { env } from '../../config/env';
 
-/** SameSite=None exige atributo Secure=true (RFC). Navegadores só enviam cookies em HTTPS; com certificado não confiável (ex.: Caddy tls internal), aceite o certificado ou o cookie não será enviado. */
-function cookieSecureFlag(): boolean {
-  return env.COOKIE_SECURE || env.COOKIE_SAMESITE === 'none';
-}
-
 function buildCookieOptions(maxAgeMs: number) {
+  const secure = env.COOKIE_SECURE || env.COOKIE_SAMESITE === 'none';
   return {
     httpOnly: true,
     sameSite: env.COOKIE_SAMESITE,
-    secure: cookieSecureFlag(),
+    secure,
     path: '/',
     maxAge: maxAgeMs,
   };
@@ -40,7 +36,7 @@ function clearAuthCookies(res: Response) {
   const options = {
     httpOnly: true,
     sameSite: env.COOKIE_SAMESITE,
-    secure: cookieSecureFlag(),
+    secure: env.COOKIE_SECURE || env.COOKIE_SAMESITE === 'none',
     path: '/',
   };
   res.clearCookie(env.JWT_ACCESS_COOKIE_NAME, options);

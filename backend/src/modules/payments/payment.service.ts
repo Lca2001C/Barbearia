@@ -1,6 +1,7 @@
 import { prisma } from '../../config/prisma';
 import { env } from '../../config/env';
 import { AppError } from '../../shared/errors/AppError';
+import { Role } from '@prisma/client';
 
 function generateMockPixCode(): string {
   const chars = '0123456789';
@@ -123,7 +124,7 @@ export async function handleWebhook(data: any) {
   }
 }
 
-export async function getPaymentStatus(paymentId: string) {
+export async function getPaymentStatus(paymentId: string, userId: string, role: Role) {
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
     include: { appointment: true },
@@ -131,6 +132,10 @@ export async function getPaymentStatus(paymentId: string) {
 
   if (!payment) {
     throw new AppError('Pagamento não encontrado', 404);
+  }
+
+  if (role !== 'ADMIN' && payment.appointment.userId !== userId) {
+    throw new AppError('Acesso não autorizado', 403);
   }
 
   return payment;

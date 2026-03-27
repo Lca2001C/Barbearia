@@ -7,9 +7,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-barbearia123}
       POSTGRES_DB: ${DB_NAME:-barbearia}
     ports:
-      - "${DB_PORT:-5434}:5432"
-    expose:
-      - "5432"
+      - "${DB_PORT:-5548}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -30,17 +28,15 @@ services:
     environment:
       DATABASE_URL: postgresql://${DB_USER:-barbearia}:${DB_PASSWORD:-barbearia123}@postgres:5432/${DB_NAME:-barbearia}?schema=public
       PORT: ${APP_BACKEND_PORT:-3335}
-      CORS_ORIGIN: ${CORS_ORIGIN:-https://localhost:8443}
-      FRONTEND_URL: ${APP_URL:-https://localhost:8443}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://localhost:8446}
+      FRONTEND_URL: ${APP_URL:-https://localhost:8446}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
     expose:
       - "${APP_BACKEND_PORT:-3335}"
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
     networks:
       - app_net
 
@@ -48,18 +44,16 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://localhost:8446/api}
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://localhost:8443/api}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://localhost:8446/api}
       NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
     expose:
       - "3000"
     depends_on:
       - backend
-    volumes:
-      - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
-      - frontend_next_cache:/app/.next
     networks:
       - app_net
 
@@ -70,8 +64,8 @@ services:
       - frontend
       - backend
     ports:
-      - "${APP_HTTP_PORT:-8080}:80"
-      - "${APP_HTTPS_PORT:-8443}:443"
+      - "${APP_HTTP_PORT:-8083}:80"
+      - "${APP_HTTPS_PORT:-8446}:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -81,8 +75,6 @@ services:
 
 volumes:
   postgres_data:
-  frontend_node_modules:
-  frontend_next_cache:
   caddy_data:
   caddy_config:
 

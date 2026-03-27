@@ -7,16 +7,16 @@ function emptyToUndefined(value: unknown) {
   return value;
 }
 
-const envSchemaObject = z.object({
+const envSchema = z.object({
   DATABASE_URL: z
     .string()
     .min(1, 'DATABASE_URL é obrigatória')
     .refine(
-      (s: string) => s.startsWith('postgresql://') || s.startsWith('postgres://'),
+      (s) => s.startsWith('postgresql://') || s.startsWith('postgres://'),
       'DATABASE_URL deve ser uma URL PostgreSQL',
     ),
-  JWT_SECRET: z.string().min(1),
-  JWT_REFRESH_SECRET: z.string().min(1),
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET deve ter ao menos 32 caracteres'),
+  JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET deve ter ao menos 32 caracteres'),
   JWT_ACCESS_COOKIE_NAME: z.string().default('barbearia_access_token'),
   JWT_REFRESH_COOKIE_NAME: z.string().default('barbearia_refresh_token'),
   ACCESS_TOKEN_TTL: z.string().default('15m'),
@@ -24,11 +24,11 @@ const envSchemaObject = z.object({
   COOKIE_SECURE: z
     .string()
     .optional()
-    .transform((value: string | undefined) => value === 'true'),
+    .transform((value) => value === 'true'),
   COOKIE_SAMESITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   PORT: z.coerce.number().default(3335),
-  CORS_ORIGIN: z.string().default('https://localhost:8443'),
-  FRONTEND_URL: z.string().default('https://localhost:8443'),
+  CORS_ORIGIN: z.string().default('https://localhost:8446'),
+  FRONTEND_URL: z.string().default('https://localhost:8446'),
   PASSWORD_RESET_TOKEN_TTL_MINUTES: z.coerce.number().default(15),
   SMTP_HOST: z.preprocess(emptyToUndefined, z.string().optional()),
   SMTP_PORT: z.preprocess(emptyToUndefined, z.coerce.number().optional()),
@@ -44,27 +44,6 @@ const envSchemaObject = z.object({
   /** 0 = desliga o rate limit (útil só em dev local). Padrão: 2000 req / janela. */
   RATE_LIMIT_MAX: z.coerce.number().default(2000),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
-});
-
-type EnvSchemaOut = z.infer<typeof envSchemaObject>;
-
-const envSchema = envSchemaObject.superRefine((data: EnvSchemaOut, ctx: z.RefinementCtx) => {
-  if (data.COOKIE_SAMESITE === 'none' && !data.COOKIE_SECURE) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message:
-        'COOKIE_SAMESITE=none exige COOKIE_SECURE=true. Navegadores só enviam cookies SameSite=None em conexões seguras (HTTPS).',
-      path: ['COOKIE_SAMESITE'],
-    });
-  }
-  if (data.COOKIE_SAMESITE === 'none' && !/^https:\/\//i.test(data.FRONTEND_URL)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message:
-        'Com COOKIE_SAMESITE=none, FRONTEND_URL deve usar HTTPS (ex.: https://localhost:8443). Certificados self-signed exigem confiança manual no navegador ou os cookies não serão enviados.',
-      path: ['FRONTEND_URL'],
-    });
-  }
 });
 
 export const env = envSchema.parse(process.env);

@@ -10,7 +10,6 @@ datasource db {
 enum Role {
   ADMIN
   CLIENT
-  SUB_ADMIN
 }
 
 enum AppointmentStatus {
@@ -37,21 +36,17 @@ model User {
   id                       String    @id @default(uuid())
   name                     String
   email                    String    @unique
-  username                 String?   @unique
   phone                    String?
   password                 String
   role                     Role      @default(CLIENT)
-  managedBarberId          String?   @map("managed_barber_id")
   passwordResetTokenHash   String?   @map("password_reset_token_hash")
   passwordResetExpiresAt   DateTime? @map("password_reset_expires_at")
   createdAt                DateTime  @default(now()) @map("created_at")
   updatedAt                DateTime  @updatedAt @map("updated_at")
 
-  managedBarber     Barber?            @relation(fields: [managedBarberId], references: [id], onDelete: SetNull)
   appointments      Appointment[]
   pushSubscriptions PushSubscription[]
 
-  @@index([managedBarberId])
   @@map("users")
 }
 
@@ -66,7 +61,6 @@ model Barber {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  subAdminUsers  User[]
   appointments   Appointment[]
   barberServices BarberService[]
   workingHours   WorkingHour[]

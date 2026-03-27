@@ -1,12 +1,23 @@
 localhost {
   tls internal
+  encode gzip zstd
 
   @api path /api /api/*
   handle @api {
-    reverse_proxy backend:3335
+    reverse_proxy backend:3335 {
+      header_up Host {http.request.host}
+      header_up X-Forwarded-Proto https
+      header_up X-Forwarded-For {http.request.remote.host}
+      header_up X-Forwarded-Host {http.request.host}
+    }
   }
 
   handle {
-    reverse_proxy frontend:3000
+    reverse_proxy frontend:3000 {
+      header_up Host {http.request.host}
+      header_up X-Forwarded-Proto https
+      header_up X-Forwarded-For {http.request.remote.host}
+      header_up X-Forwarded-Host {http.request.host}
+    }
   }
 }
