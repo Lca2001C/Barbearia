@@ -1,8 +1,22 @@
+import { Role } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { AppError } from '../../shared/errors/AppError';
 import { CreateBarberInput, UpdateBarberInput, WorkingHourInput } from './barber.schema';
 
-export async function listBarbers() {
+export async function listBarbers(viewer?: { role: Role; managedBarberId?: string | null }) {
+  if (viewer?.role === 'SUB_ADMIN') {
+    if (!viewer.managedBarberId) {
+      return [];
+    }
+    return prisma.barber.findMany({
+      where: { id: viewer.managedBarberId, active: true },
+      include: {
+        barberServices: { include: { service: true } },
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
   return prisma.barber.findMany({
     where: { active: true },
     include: {
@@ -151,8 +165,9 @@ export async function getAvailability(barberId: string, date: string, serviceId:
   return slots;
 }
 
-export async function getBarbersMetricsOverview() {
+export async function getBarbersMetricsOverview(scopeBarberId?: string) {
   const barbers = await prisma.barber.findMany({
+    where: scopeBarberId ? { id: scopeBarberId } : undefined,
     orderBy: { name: 'asc' },
     select: { id: true, name: true, active: true, email: true },
   });
@@ -180,5 +195,50 @@ export async function getBarbersMetricsOverview() {
       completedCuts: m.completedCuts,
       totalRevenue: m.totalRevenue,
     };
+  });
+}
+
+export async function getBarberHistory(
+  barberId: string,
+  order: 'asc' | 'desc' = 'desc',
+  viewer?: { role: Role; managedBarberId?: string | null },
+) {
+  if (viewer?.role === 'SUB_ADMIN' && viewer.managedBarberId !== barberId) {
+    throw new AppError('Acesso não autorizado', 403);
+  }
+
+  const barber = await prisma.barber.findUnique({ where: { id: barberId } });
+  if (!barber) {
+    throw new AppError('Barbeiro não encontrado', 404);
+  }
+
+  return prisma.appointment.findMany({
+    where: {
+      barberId,
+      status: 'COMPLETED',
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      service: {
+        select: {
+          id: true,
+          name: true,
+          price: true,
+        },
+      },
+      barber: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+    orderBy: { dateTime: order },
   });
 }

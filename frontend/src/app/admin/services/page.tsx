@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Plus,
   Pencil,
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '@/lib/api'
+import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
@@ -29,6 +31,8 @@ interface Service {
 const EMPTY_FORM = { name: '', description: '', price: '', duration: '' }
 
 export default function AdminServicesPage() {
+  const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -37,8 +41,14 @@ export default function AdminServicesPage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
+    if (authLoading) return
+    if (!user) return
+    if (user.role === 'SUB_ADMIN') {
+      router.replace('/admin')
+      return
+    }
     fetchServices()
-  }, [])
+  }, [authLoading, user, router])
 
   async function fetchServices() {
     try {

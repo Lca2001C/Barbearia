@@ -14,14 +14,14 @@ const router = Router();
 router.get(
   '/barber/:barberId',
   authenticate,
-  authorize('ADMIN'),
+  authorize('ADMIN', 'SUB_ADMIN'),
   listByBarberHandler,
 );
 
 router.post(
   '/barber/:barberId',
   authenticate,
-  authorize('ADMIN'),
+  authorize('ADMIN', 'SUB_ADMIN'),
   validate(createStockItemSchema),
   createItemHandler,
 );
@@ -29,11 +29,11 @@ router.post(
 router.put(
   '/:id',
   authenticate,
-  authorize('ADMIN'),
+  authorize('ADMIN', 'SUB_ADMIN'),
   validate(updateStockItemSchema),
   updateItemHandler,
 );
 
-router.delete('/:id', authenticate, authorize('ADMIN'), deleteItemHandler);
+router.delete('/:id', authenticate, authorize('ADMIN', 'SUB_ADMIN'), deleteItemHandler);
 
 export { router as stockRoutes };
