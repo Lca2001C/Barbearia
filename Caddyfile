@@ -1,7 +1,7 @@
 localhost {
   tls internal
 
-  @api path /api/*
+  @api path /api /api/*
   handle @api {
     reverse_proxy backend:3335
   }

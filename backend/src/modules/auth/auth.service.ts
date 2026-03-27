@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { prisma } from '../../config/prisma';
 import { env } from '../../config/env';
+import { isPrimaryAdminEmail } from '../../config/admin';
 import { hashPassword, comparePassword } from '../../shared/utils/password';
 import { AppError } from '../../shared/errors/AppError';
 import { ForgotPasswordInput, LoginInput, RegisterInput, ResetPasswordInput } from './auth.schema';
@@ -126,7 +127,7 @@ export async function login(data: LoginInput) {
   }
 
   // Garante que o usuário de admin padrão exista como ADMIN (caso o banco tenha sido seedado antes).
-  if (user.email === 'admin@barbearia.com' && user.role !== 'ADMIN') {
+  if (isPrimaryAdminEmail(user.email) && user.role !== 'ADMIN') {
     user = await prisma.user.update({
       where: { id: user.id },
       data: { role: 'ADMIN' },
@@ -153,7 +154,7 @@ export async function refreshToken(token: string) {
     }
 
     const ensuredUser =
-      user.email === 'admin@barbearia.com' && user.role !== 'ADMIN'
+      isPrimaryAdminEmail(user.email) && user.role !== 'ADMIN'
         ? await prisma.user.update({ where: { id: user.id }, data: { role: 'ADMIN' } })
         : user;
 

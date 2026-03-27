@@ -1,22 +1,38 @@
 import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../src/shared/utils/password';
+import { PRIMARY_ADMIN_EMAIL } from '../src/config/admin';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('Seeding database...');
 
-  const adminPassword = await hashPassword('admin123');
-  const admin = await prisma.user.upsert({
-    where: { email: 'admin@barbearia.com' },
-    update: { role: 'ADMIN' },
-    create: {
-      name: 'Administrador',
-      email: 'admin@barbearia.com',
-      password: adminPassword,
-      role: 'ADMIN',
-    },
-  });
+  const adminPassword = await hashPassword('88958011');
+  const oldAdmin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
+  let admin;
+  if (oldAdmin && oldAdmin.email.toLowerCase() !== PRIMARY_ADMIN_EMAIL) {
+    admin = await prisma.user.update({
+      where: { id: oldAdmin.id },
+      data: {
+        email: PRIMARY_ADMIN_EMAIL,
+        username: 'admin',
+        password: adminPassword,
+        role: 'ADMIN',
+      },
+    });
+  } else {
+    admin = await prisma.user.upsert({
+      where: { email: PRIMARY_ADMIN_EMAIL },
+      update: { role: 'ADMIN', password: adminPassword },
+      create: {
+        name: 'Administrador',
+        email: PRIMARY_ADMIN_EMAIL,
+        username: 'admin',
+        password: adminPassword,
+        role: 'ADMIN',
+      },
+    });
+  }
   console.log(`Admin user created: ${admin.email}`);
 
   const barber1 = await prisma.barber.upsert({

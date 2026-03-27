@@ -147,8 +147,8 @@ docker compose exec backend npm run prisma:seed
 
 ### Credenciais do Admin (seed)
 
-- **Email**: admin@barbearia.com
-- **Senha**: admin123
+- **Email**: jonataloubah98@gmail.com
+- **Senha**: 88958011
 
 ## Ambiente de Staging (Pre-Producao)
 
@@ -202,7 +202,7 @@ docker compose -p bhd-staging \
 
 | Role      | Email                    | Senha       |
 | --------- | ------------------------ | ----------- |
-| ADMIN     | admin@barbearia.com      | admin123    |
+| ADMIN     | jonataloubah98@gmail.com | 88958011    |
 | SUB_ADMIN | subadmin@barbearia.com   | subadmin123 |
 | USER      | user@barbearia.com       | user123     |
 

@@ -5,12 +5,18 @@ const isProd = process.env.NODE_ENV === 'production'
 const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL
 const defaultDevApiUrl = 'https://localhost:8443/api'
 
+function normalizeApiBaseUrl(value?: string): string {
+  if (!value || !value.trim()) return defaultDevApiUrl
+  const trimmed = value.trim().replace(/\/+$/, '')
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`
+}
+
 if (isProd && !configuredApiUrl) {
   throw new Error('NEXT_PUBLIC_API_URL não configurada para ambiente de produção.')
 }
 
 const api = axios.create({
-  baseURL: configuredApiUrl || defaultDevApiUrl,
+  baseURL: normalizeApiBaseUrl(configuredApiUrl),
   withCredentials: true,
 })
 
@@ -37,8 +43,9 @@ api.interceptors.response.use(
     const originalRequest = error.config
     const requestUrl = String(originalRequest?.url || '')
     const isAuthRoute = requestUrl.includes('/auth/')
+    const isProfileRoute = requestUrl === '/users/me' || requestUrl.endsWith('/users/me')
     const shouldSkipRefresh =
-      isAuthRoute || requestUrl.includes('/users/me') || originalRequest?._skipRefresh
+      isAuthRoute || isProfileRoute || originalRequest?._skipRefresh
 
     if (error.response?.status === 401 && !originalRequest?._retry && !shouldSkipRefresh) {
       if (isRefreshing) {

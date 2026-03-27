@@ -12,6 +12,16 @@ import { stockRoutes } from './modules/stock/stock.routes';
 /** Rotas da API montadas em `/api`. Imports inválidos falham no build (`tsc`) ou ao subir o servidor. */
 const routes = Router();
 
+routes.get('/', (_req, res) => {
+  res.json({
+    data: {
+      ok: true,
+      service: 'cia-do-disfarce-api',
+      docsHint: 'Use /api/health para healthcheck.',
+    },
+  });
+});
+
 routes.get('/health', (_req, res) => {
   res.json({ data: { ok: true, service: 'cia-do-disfarce-api' } });
 });
