@@ -246,6 +246,39 @@ npm run dev                    # http://localhost:3100
 4. Configure as variáveis de ambiente
 5. Railway detecta automaticamente o Dockerfile
 
+### Vercel (frontend) + Railway (backend)
+
+Use o arquivo [`.env.production.example`](.env.production.example) como referência. Após alterar variáveis no Railway ou na Vercel, faça **Redeploy** no serviço afetado para aplicar os valores.
+
+**Checklist — Railway (API)**
+
+| Variável | Valor esperado |
+| -------- | -------------- |
+| `COOKIE_SAMESITE` | `none` quando o site na Vercel e a API no Railway usam domínios diferentes |
+| `COOKIE_SECURE` | `true` |
+| `CORS_ORIGIN` | URL exata do frontend (ex.: `https://seu-projeto.vercel.app`), sem barra final; origens múltiplas separadas por vírgula |
+| `FRONTEND_URL` | Mesma URL pública do frontend usada em e-mails/links |
+
+**Checklist — Vercel (Next.js)**
+
+| Variável | Valor esperado |
+| -------- | -------------- |
+| `NEXT_PUBLIC_API_URL` | URL pública do backend com sufixo `/api` (ex.: `https://seu-servico.up.railway.app/api`) |
+
+O cliente Axios já usa `withCredentials: true` ([`frontend/src/lib/api.ts`](frontend/src/lib/api.ts)); não é necessário mudar código só para enviar cookies.
+
+#### Conferir cookies no navegador (DevTools)
+
+1. Abra o site na Vercel, faça login e abra DevTools (F12) → **Network**.
+2. Na resposta **POST** `/auth/login`, em **Headers**, verifique **Set-Cookie**: deve constar `SameSite=None` e `Secure`.
+3. Na requisição seguinte (ex.: **GET** `/users/me`), em **Request Headers**, confira se **Cookie** inclui os nomes configurados em `JWT_ACCESS_COOKIE_NAME` / `JWT_REFRESH_COOKIE_NAME`.
+4. Se o Chrome mostrar um aviso no cookie na aba **Application** → **Cookies**, a mensagem indica o motivo da rejeição (por exemplo regra SameSite).
+
+#### Se o login ainda falhar após `none` + CORS correto
+
+- **Domínio próprio**: configure `app.seudominio.com` na Vercel e `api.seudominio.com` na Railway (CNAME). Com o mesmo registrable domain, o navegador trata cookies de forma mais previsível entre subdomínios.
+- **Alternativa técnica**: o backend já aceita token em `Authorization: Bearer` ([`backend/src/shared/middlewares/auth.ts`](backend/src/shared/middlewares/auth.ts)). Persistir o access token no cliente e enviá-lo no header evita depender de cookie cross-site, porém exige mudanças no fluxo do frontend (hoje o app usa principalmente cookies httpOnly).
+
 ### Opção 2: Render
 
 1. Crie um Web Service no [Render](https://render.com) para o backend
