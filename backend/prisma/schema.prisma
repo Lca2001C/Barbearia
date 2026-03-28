@@ -181,4 +181,4 @@ model PushSubscription {
 
   @@map("push_subscriptions")
 }
-# sync
+// sync
