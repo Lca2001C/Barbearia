@@ -1,4 +1,4 @@
-import { Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { AppError } from '../../shared/errors/AppError';
 import { CreateBarberInput, UpdateBarberInput, WorkingHourInput } from './barber.schema';
@@ -85,7 +85,7 @@ export async function setWorkingHours(barberId: string, hours: WorkingHourInput[
     throw new AppError('Barbeiro não encontrado', 404);
   }
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.workingHour.deleteMany({ where: { barberId } });
 
     await tx.workingHour.createMany({
@@ -132,6 +132,7 @@ export async function getAvailability(barberId: string, date: string, serviceId:
     },
     orderBy: { dateTime: 'asc' },
   });
+  type ApptRow = (typeof appointments)[number];
 
   const [startHour, startMin] = workingHour.startTime.split(':').map(Number);
   const [endHour, endMin] = workingHour.endTime.split(':').map(Number);
@@ -148,7 +149,7 @@ export async function getAvailability(barberId: string, date: string, serviceId:
     const slotEnd = new Date(slotStart);
     slotEnd.setMinutes(slotEnd.getMinutes() + durationMinutes);
 
-    const hasConflict = appointments.some((appt) => {
+    const hasConflict = appointments.some((appt: ApptRow) => {
       return slotStart < appt.endTime && slotEnd > appt.dateTime;
     });
 
@@ -171,6 +172,7 @@ export async function getBarbersMetricsOverview(scopeBarberId?: string) {
     orderBy: { name: 'asc' },
     select: { id: true, name: true, active: true, email: true },
   });
+  type BarberRow = (typeof barbers)[number];
 
   const completed = await prisma.appointment.findMany({
     where: { status: 'COMPLETED' },
@@ -185,7 +187,7 @@ export async function getBarbersMetricsOverview(scopeBarberId?: string) {
     acc.set(row.barberId, prev);
   }
 
-  return barbers.map((b) => {
+  return barbers.map((b: BarberRow) => {
     const m = acc.get(b.id) ?? { completedCuts: 0, totalRevenue: 0 };
     return {
       id: b.id,

@@ -4,9 +4,10 @@ import { Role } from '@prisma/client';
 import { env } from '../../config/env';
 import { AppError } from '../errors/AppError';
 
-interface TokenPayload {
+export interface TokenPayload {
   id: string;
   role: Role;
+  managedBarberId?: string | null;
 }
 
 declare global {
@@ -17,11 +18,34 @@ declare global {
   }
 }
 
-export function authenticate(req: Request, _res: Response, next: NextFunction) {
+function readToken(req: Request): string | undefined {
   const authHeader = req.headers.authorization;
   const cookieToken = req.cookies?.[env.JWT_ACCESS_COOKIE_NAME];
   const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
-  const token = bearerToken ?? cookieToken;
+  return bearerToken ?? cookieToken;
+}
+
+export function optionalAuthenticate(req: Request, _res: Response, next: NextFunction) {
+  const token = readToken(req);
+  if (!token) {
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, env.JWT_SECRET) as TokenPayload;
+    req.user = {
+      id: decoded.id,
+      role: decoded.role,
+      managedBarberId: decoded.managedBarberId ?? null,
+    };
+    next();
+  } catch {
+    next();
+  }
+}
+
+export function authenticate(req: Request, _res: Response, next: NextFunction) {
+  const token = readToken(req);
 
   if (!token) {
     throw new AppError('Token não fornecido', 401);
@@ -29,7 +53,11 @@ export function authenticate(req: Request, _res: Response, next: NextFunction) {
 
   try {
     const decoded = jwt.verify(token, env.JWT_SECRET) as TokenPayload;
-    req.user = { id: decoded.id, role: decoded.role };
+    req.user = {
+      id: decoded.id,
+      role: decoded.role,
+      managedBarberId: decoded.managedBarberId ?? null,
+    };
     next();
   } catch {
     throw new AppError('Token inválido ou expirado', 401);

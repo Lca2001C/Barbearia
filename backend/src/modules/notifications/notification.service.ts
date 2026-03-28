@@ -59,8 +59,10 @@ export async function sendNotification(userId: string, payload: NotificationPayl
     where: { userId },
   });
 
+  type SubRow = (typeof subscriptions)[number];
+
   const results = await Promise.allSettled(
-    subscriptions.map(async (sub) => {
+    subscriptions.map(async (sub: SubRow) => {
       try {
         await webPush.sendNotification(
           {

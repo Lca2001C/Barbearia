@@ -7,7 +7,7 @@ async function sumCompletedServiceRevenue(where: Prisma.AppointmentWhereInput) {
     where: { status: 'COMPLETED', ...where },
     select: { service: { select: { price: true } } },
   });
-  return rows.reduce((sum, a) => sum + Number(a.service.price), 0);
+  return rows.reduce((sum: number, a: (typeof rows)[number]) => sum + Number(a.service.price), 0);
 }
 
 interface StatsRangeInput {

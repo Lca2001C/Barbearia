@@ -3,7 +3,8 @@ builder = "dockerfile"
 dockerfilePath = "backend/Dockerfile"
 
 [deploy]
-startCommand = "node dist/server.js"
+# Alinhado ao backend/Dockerfile: migrações antes de subir a API
+startCommand = "sh -c \"npx prisma migrate deploy && node dist/server.js\""
 healthcheckPath = "/api/health"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"

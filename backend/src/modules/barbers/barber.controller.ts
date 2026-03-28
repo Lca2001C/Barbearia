@@ -10,8 +10,11 @@ function getParam(value: string | string[] | undefined, name: string) {
   return normalized;
 }
 
-export async function listBarbersHandler(_req: Request, res: Response) {
-  const barbers = await barberService.listBarbers();
+export async function listBarbersHandler(req: Request, res: Response) {
+  const viewer = req.user
+    ? { role: req.user.role, managedBarberId: req.user.managedBarberId ?? null }
+    : undefined;
+  const barbers = await barberService.listBarbers(viewer);
   return res.json({ data: barbers });
 }
 
@@ -51,7 +54,19 @@ export async function getAvailabilityHandler(req: Request, res: Response) {
   return res.json({ data: slots });
 }
 
-export async function getBarbersMetricsOverviewHandler(_req: Request, res: Response) {
-  const rows = await barberService.getBarbersMetricsOverview();
+export async function getBarbersMetricsOverviewHandler(req: Request, res: Response) {
+  const scopeBarberId =
+    req.user!.role === 'SUB_ADMIN' ? req.user!.managedBarberId ?? undefined : undefined;
+  const rows = await barberService.getBarbersMetricsOverview(scopeBarberId);
   return res.json({ data: rows });
+}
+
+export async function getBarberHistoryHandler(req: Request, res: Response) {
+  const barberId = getParam(req.params.id, 'id');
+  const order = req.query.order === 'asc' ? 'asc' : 'desc';
+  const viewer = req.user
+    ? { role: req.user.role, managedBarberId: req.user.managedBarberId ?? null }
+    : undefined;
+  const history = await barberService.getBarberHistory(barberId, order, viewer);
+  return res.json({ data: history });
 }
