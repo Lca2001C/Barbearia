@@ -5,6 +5,7 @@ import Link from 'next/link'
 import {
   Calendar,
   ChevronDown,
+  CircleUser,
   Home,
   LayoutDashboard,
   LogOut,
@@ -12,6 +13,7 @@ import {
   User,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { isStaffRole } from '@/lib/auth'
 import { Button } from '@/components/ui/Button'
 
 export function UserMenu() {
@@ -33,9 +35,10 @@ export function UserMenu() {
 
   const items = [
     { href: '/', label: 'Início', icon: Home },
+    { href: '/profile', label: 'Meu perfil', icon: CircleUser },
     { href: '/booking', label: 'Agendar', icon: Scissors },
     { href: '/my-appointments', label: 'Meus agendamentos', icon: Calendar },
-    ...(user.role === 'ADMIN'
+    ...(isStaffRole(user.role)
       ? [{ href: '/admin', label: 'Painel admin', icon: LayoutDashboard }]
       : []),
   ]

@@ -10,8 +10,10 @@ import {
   Home,
   LayoutDashboard,
   LogOut,
+  CircleUser,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { isStaffRole } from '@/lib/auth'
 import { Button } from '@/components/ui/Button'
 import { QuickUserActions, UserMenu } from '@/components/layout/UserMenu'
 import { BrandLogo } from '@/components/BrandLogo'
@@ -84,6 +86,14 @@ export function Header() {
             {isAuthenticated && (
               <>
                 <Link
+                  href="/profile"
+                  className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-300 hover:bg-amber-100/10 hover:text-amber-100"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <CircleUser className="h-4 w-4" />
+                  Meu perfil
+                </Link>
+                <Link
                   href="/booking"
                   className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-300 hover:bg-amber-100/10 hover:text-amber-100"
                   onClick={() => setMobileOpen(false)}
@@ -99,7 +109,7 @@ export function Header() {
                   <Calendar className="h-4 w-4" />
                   Meus agendamentos
                 </Link>
-                {user?.role === 'ADMIN' && (
+                {user && isStaffRole(user.role) && (
                   <Link
                     href="/admin"
                     className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-300 hover:bg-amber-100/10 hover:text-amber-100"

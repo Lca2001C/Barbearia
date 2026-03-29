@@ -9,15 +9,23 @@ import {
   Calendar,
   Package,
   X,
+  UserCog,
 } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface AdminSidebarProps {
   open: boolean
   onClose: () => void
 }
 
-const links = [
+const baseLinks: Array<{
+  href: string
+  label: string
+  icon: typeof LayoutDashboard
+  adminOnly?: boolean
+}> = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/admin/users', label: 'Usuários', icon: UserCog, adminOnly: true },
   { href: '/admin/barbers', label: 'Barbeiros', icon: Users },
   { href: '/admin/services', label: 'Serviços', icon: Scissors },
   { href: '/admin/stock', label: 'Estoque', icon: Package },
@@ -26,6 +34,11 @@ const links = [
 
 export function AdminSidebar({ open, onClose }: AdminSidebarProps) {
   const pathname = usePathname()
+  const { user } = useAuth()
+
+  const links = baseLinks.filter(
+    (link) => !link.adminOnly || user?.role === 'ADMIN',
+  )
 
   const isActive = (href: string) => {
     if (href === '/admin') return pathname === '/admin'
