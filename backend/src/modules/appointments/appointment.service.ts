@@ -58,7 +58,7 @@ export async function createAppointment(userId: string, data: CreateAppointmentI
   const conflict = await prisma.appointment.findFirst({
     where: {
       barberId: data.barberId,
-      status: { not: 'CANCELLED' },
+      status: { in: ['PENDING', 'CONFIRMED', 'COMPLETED'] },
       dateTime: { lt: endTime },
       endTime: { gt: dateTime },
     },
@@ -264,7 +264,7 @@ export async function createAppointmentByAdmin(
   const conflict = await prisma.appointment.findFirst({
     where: {
       barberId: data.barberId,
-      status: { not: 'CANCELLED' },
+      status: { in: ['PENDING', 'CONFIRMED', 'COMPLETED'] },
       dateTime: { lt: endTime },
       endTime: { gt: dateTime },
     },
@@ -325,7 +325,7 @@ export async function updateAppointmentByAdmin(
       where: {
         id: { not: id },
         barberId: nextBarberId,
-        status: { not: 'CANCELLED' },
+        status: { in: ['PENDING', 'CONFIRMED', 'COMPLETED'] },
         dateTime: { lt: nextEndTime },
         endTime: { gt: nextDateTime },
       },

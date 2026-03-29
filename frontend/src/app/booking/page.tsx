@@ -69,7 +69,9 @@ export default function BookingPage() {
   const [step, setStep] = useState(0)
   const [services, setServices] = useState<Service[]>([])
   const [barbers, setBarbers] = useState<Barber[]>([])
-  const [slots, setSlots] = useState<{ time: string; available: boolean }[]>([])
+  const [slots, setSlots] = useState<
+    { time: string; available: boolean; reservedKind?: 'active' | 'completed' }[]
+  >([])
 
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null)
@@ -407,7 +409,9 @@ export default function BookingPage() {
                         <span>{slot.time}</span>
                         {!slot.available && (
                           <span className="text-[11px] font-medium text-slate-500">
-                            Reservado
+                            {slot.reservedKind === 'completed'
+                              ? 'Concluído'
+                              : 'Reservado'}
                           </span>
                         )}
                       </span>

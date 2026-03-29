@@ -1,6 +1,24 @@
+import { Role } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { AppError } from '../../shared/errors/AppError';
 import { CreateStockItemInput, UpdateStockItemInput } from './stock.schema';
+
+export type StockViewer = {
+  role: Role;
+  managedBarberId?: string | null;
+};
+
+function assertBarberScope(viewer: StockViewer, barberId: string) {
+  if (viewer.role === 'ADMIN') {
+    return;
+  }
+  if (viewer.role === 'SUB_ADMIN') {
+    if (viewer.managedBarberId && viewer.managedBarberId === barberId) {
+      return;
+    }
+  }
+  throw new AppError('Acesso não autorizado', 403);
+}
 
 async function assertBarber(barberId: string) {
   const barber = await prisma.barber.findUnique({ where: { id: barberId } });
@@ -10,7 +28,8 @@ async function assertBarber(barberId: string) {
   return barber;
 }
 
-export async function listByBarber(barberId: string) {
+export async function listByBarber(barberId: string, viewer: StockViewer) {
+  assertBarberScope(viewer, barberId);
   await assertBarber(barberId);
   return prisma.stockItem.findMany({
     where: { barberId },
@@ -18,7 +37,8 @@ export async function listByBarber(barberId: string) {
   });
 }
 
-export async function createItem(barberId: string, data: CreateStockItemInput) {
+export async function createItem(barberId: string, data: CreateStockItemInput, viewer: StockViewer) {
+  assertBarberScope(viewer, barberId);
   await assertBarber(barberId);
   return prisma.stockItem.create({
     data: {
@@ -31,11 +51,12 @@ export async function createItem(barberId: string, data: CreateStockItemInput) {
   });
 }
 
-export async function updateItem(id: string, data: UpdateStockItemInput) {
+export async function updateItem(id: string, data: UpdateStockItemInput, viewer: StockViewer) {
   const item = await prisma.stockItem.findUnique({ where: { id } });
   if (!item) {
     throw new AppError('Item de estoque não encontrado', 404);
   }
+  assertBarberScope(viewer, item.barberId);
   return prisma.stockItem.update({
     where: { id },
     data: {
@@ -47,10 +68,11 @@ export async function updateItem(id: string, data: UpdateStockItemInput) {
   });
 }
 
-export async function deleteItem(id: string) {
+export async function deleteItem(id: string, viewer: StockViewer) {
   const item = await prisma.stockItem.findUnique({ where: { id } });
   if (!item) {
     throw new AppError('Item de estoque não encontrado', 404);
   }
+  assertBarberScope(viewer, item.barberId);
   await prisma.stockItem.delete({ where: { id } });
 }

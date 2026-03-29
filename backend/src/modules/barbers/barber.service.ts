@@ -104,7 +104,22 @@ export async function setWorkingHours(barberId: string, hours: WorkingHourInput[
   });
 }
 
-export async function getAvailability(barberId: string, date: string, serviceId: string) {
+/** Horários que ocupam a agenda (cancelado libera o slot). */
+const BLOCKING_APPOINTMENT_STATUSES = ['PENDING', 'CONFIRMED', 'COMPLETED'] as const;
+
+export type AvailabilitySlot = {
+  time: string;
+  available: boolean;
+  /** Quando indisponível: ativo (agendado) ou já concluído (permanece marcado como ocupado). */
+  reservedKind?: 'active' | 'completed';
+};
+
+export async function getAvailability(
+  barberId: string,
+  date: string,
+  serviceId: string,
+  excludeAppointmentId?: string | null,
+) {
   const targetDate = new Date(date + 'T00:00:00');
   const dayOfWeek = targetDate.getDay();
 
@@ -124,21 +139,31 @@ export async function getAvailability(barberId: string, date: string, serviceId:
   const dayStart = new Date(date + 'T00:00:00');
   const dayEnd = new Date(date + 'T23:59:59');
 
-  const appointments = await prisma.appointment.findMany({
+  let appointments = await prisma.appointment.findMany({
     where: {
       barberId,
       dateTime: { gte: dayStart, lte: dayEnd },
-      status: { not: 'CANCELLED' },
+      status: { in: [...BLOCKING_APPOINTMENT_STATUSES] },
     },
     orderBy: { dateTime: 'asc' },
   });
   type ApptRow = (typeof appointments)[number];
 
+  if (excludeAppointmentId) {
+    const excluded = await prisma.appointment.findUnique({
+      where: { id: excludeAppointmentId },
+      select: { id: true, status: true },
+    });
+    if (excluded && (excluded.status === 'PENDING' || excluded.status === 'CONFIRMED')) {
+      appointments = appointments.filter((a) => a.id !== excludeAppointmentId);
+    }
+  }
+
   const [startHour, startMin] = workingHour.startTime.split(':').map(Number);
   const [endHour, endMin] = workingHour.endTime.split(':').map(Number);
   const durationMinutes = service.duration;
 
-  const slots: { time: string; available: boolean }[] = [];
+  const slots: AvailabilitySlot[] = [];
   let currentMinutes = startHour * 60 + startMin;
   const closingMinutes = endHour * 60 + endMin;
 
@@ -149,16 +174,23 @@ export async function getAvailability(barberId: string, date: string, serviceId:
     const slotEnd = new Date(slotStart);
     slotEnd.setMinutes(slotEnd.getMinutes() + durationMinutes);
 
-    const hasConflict = appointments.some((appt: ApptRow) => {
+    const overlapping = appointments.filter((appt: ApptRow) => {
       return slotStart < appt.endTime && slotEnd > appt.dateTime;
     });
+    const hasConflict = overlapping.length > 0;
+    const hasActive = overlapping.some((a) => a.status === 'PENDING' || a.status === 'CONFIRMED');
+    const hasCompleted = overlapping.some((a) => a.status === 'COMPLETED');
 
     const hh = String(Math.floor(currentMinutes / 60)).padStart(2, '0');
     const mm = String(currentMinutes % 60).padStart(2, '0');
-    slots.push({
+    const slot: AvailabilitySlot = {
       time: `${hh}:${mm}`,
       available: !hasConflict,
-    });
+    };
+    if (hasConflict) {
+      slot.reservedKind = hasActive ? 'active' : hasCompleted ? 'completed' : 'active';
+    }
+    slots.push(slot);
 
     currentMinutes += 30;
   }

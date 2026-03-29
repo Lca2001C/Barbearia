@@ -48,9 +48,18 @@ export async function setWorkingHoursHandler(req: Request, res: Response) {
 }
 
 export async function getAvailabilityHandler(req: Request, res: Response) {
-  const { date, serviceId } = req.query as { date: string; serviceId: string };
+  const { date, serviceId, excludeAppointmentId } = req.query as {
+    date: string;
+    serviceId: string;
+    excludeAppointmentId?: string;
+  };
   const barberId = getParam(req.params.id, 'id');
-  const slots = await barberService.getAvailability(barberId, date, serviceId);
+  const slots = await barberService.getAvailability(
+    barberId,
+    date,
+    serviceId,
+    excludeAppointmentId,
+  );
   return res.json({ data: slots });
 }
 

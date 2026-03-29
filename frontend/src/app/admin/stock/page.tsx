@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '@/lib/api'
+import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
@@ -33,6 +34,8 @@ interface StockItem {
 const EMPTY = { name: '', description: '', quantity: '0', unit: 'un' }
 
 export default function AdminStockPage() {
+  const { user } = useAuth()
+  const isSub = user?.role === 'SUB_ADMIN'
   const [barbers, setBarbers] = useState<Barber[]>([])
   const [barberId, setBarberId] = useState<string>('')
   const [items, setItems] = useState<StockItem[]>([])
@@ -44,13 +47,19 @@ export default function AdminStockPage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
+    if (user?.role === 'SUB_ADMIN' && user.managedBarberId) {
+      setBarberId(user.managedBarberId)
+    }
+  }, [user])
+
+  useEffect(() => {
     api
       .get('/barbers')
       .then((res) => {
         const list: Barber[] = (res.data.data || []).filter((b: Barber) => b.active)
         setBarbers(list)
-        if (list.length && !barberId) {
-          setBarberId(list[0].id)
+        if (list.length) {
+          setBarberId((prev) => prev || list[0].id)
         }
       })
       .catch(() => toast.error('Erro ao carregar barbeiros.'))
@@ -139,26 +148,30 @@ export default function AdminStockPage() {
     <div>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Estoque por barbeiro</h2>
+          <h2 className="text-2xl font-bold text-white">
+            {isSub ? 'Meu estoque' : 'Estoque por barbeiro'}
+          </h2>
           <p className="mt-1 text-sm text-slate-400">
             Cadastre produtos, controle quantidades e unidades (un, ml, cx…).
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <label className="text-sm text-slate-400">
-            Barbeiro
-            <select
-              value={barberId}
-              onChange={(e) => setBarberId(e.target.value)}
-              className="ml-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
-            >
-              {barbers.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          {!isSub && (
+            <label className="text-sm text-slate-400">
+              Barbeiro
+              <select
+                value={barberId}
+                onChange={(e) => setBarberId(e.target.value)}
+                className="ml-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+              >
+                {barbers.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <Button onClick={openCreate} disabled={!barberId}>
             <Plus className="h-4 w-4" />
             Novo produto

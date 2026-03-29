@@ -10,7 +10,9 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
@@ -39,6 +41,9 @@
     "@types/web-push": "*",
     "prisma": "^6.19.0",
     "tsx": "*",
-    "typescript": "*"
+    "typescript": "*",
+    "vitest": "^3.2.0",
+    "supertest": "^7.1.0",
+    "@types/supertest": "^6.0.2"
   }
 }

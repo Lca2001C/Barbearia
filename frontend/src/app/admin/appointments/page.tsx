@@ -57,6 +57,7 @@ interface ServiceOption {
 interface Slot {
   time: string
   available: boolean
+  reservedKind?: 'active' | 'completed'
 }
 
 const EMPTY_FORM = {
@@ -160,9 +161,11 @@ export default function AdminAppointmentsPage() {
 
     setLoadingSlots(true)
     try {
-      const { data } = await api.get(
-        `/barbers/${nextForm.barberId}/availability?date=${dateStr}&serviceId=${nextForm.serviceId}`,
-      )
+      let url = `/barbers/${nextForm.barberId}/availability?date=${dateStr}&serviceId=${encodeURIComponent(nextForm.serviceId)}`
+      if (editingId && nextForm.status !== 'COMPLETED') {
+        url += `&excludeAppointmentId=${encodeURIComponent(editingId)}`
+      }
+      const { data } = await api.get(url)
       setSlots(data.data || [])
     } catch {
       setSlots([])
@@ -250,7 +253,12 @@ export default function AdminAppointmentsPage() {
     try {
       await api.patch(`/appointments/${id}/complete`)
       toast.success('Agendamento concluído!')
-      fetchData()
+      await fetchData()
+      if (showForm && editingId === id) {
+        const nextForm = { ...form, status: 'COMPLETED' as Appointment['status'] }
+        setForm(nextForm)
+        await fetchSlotsForForm(nextForm)
+      }
     } catch {
       toast.error('Erro ao concluir agendamento.')
     } finally {
@@ -396,12 +404,14 @@ export default function AdminAppointmentsPage() {
                 <label className="mb-1 block text-sm text-slate-300">Status</label>
                 <select
                   value={form.status}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      status: e.target.value as Appointment['status'],
+                  onChange={(e) => {
+                    const status = e.target.value as Appointment['status']
+                    setForm((prev) => {
+                      const next = { ...prev, status }
+                      void fetchSlotsForForm(next)
+                      return next
                     })
-                  }
+                  }}
                   className="h-11 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 text-sm text-white"
                 >
                   <option value="PENDING">Pendente</option>
@@ -470,7 +480,9 @@ export default function AdminAppointmentsPage() {
                           <span>{slot.time}</span>
                           {!slot.available && (
                             <span className="text-[11px] font-medium text-slate-500">
-                              Reservado
+                              {slot.reservedKind === 'completed'
+                                ? 'Concluído'
+                                : 'Reservado'}
                             </span>
                           )}
                         </span>
