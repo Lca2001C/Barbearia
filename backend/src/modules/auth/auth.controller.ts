@@ -46,13 +46,25 @@ function clearAuthCookies(res: Response) {
 export async function registerHandler(req: Request, res: Response) {
   const result = await authService.register(req.body);
   setAuthCookies(res, result);
-  return res.status(201).json({ data: { user: result.user } });
+  return res.status(201).json({
+    data: {
+      user: result.user,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    },
+  });
 }
 
 export async function loginHandler(req: Request, res: Response) {
   const result = await authService.login(req.body);
   setAuthCookies(res, result);
-  return res.json({ data: { user: result.user } });
+  return res.json({
+    data: {
+      user: result.user,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    },
+  });
 }
 
 export async function refreshHandler(req: Request, res: Response) {
@@ -69,7 +81,13 @@ export async function refreshHandler(req: Request, res: Response) {
 
   const result = await authService.refreshToken(refreshToken);
   setAuthCookies(res, result);
-  return res.json({ data: { user: result.user } });
+  return res.json({
+    data: {
+      user: result.user,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    },
+  });
 }
 
 export async function forgotPasswordHandler(req: Request, res: Response) {

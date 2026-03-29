@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { clearTokens } from './auth'
+import { clearTokens, getAccessToken, getRefreshToken, setAuthTokens } from './auth'
 
 const isProd = process.env.NODE_ENV === 'production'
 const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL
@@ -12,6 +12,29 @@ if (isProd && !configuredApiUrl) {
 const api = axios.create({
   baseURL: configuredApiUrl || defaultDevApiUrl,
   withCredentials: true,
+})
+
+function isPublicAuthPath(url: string | undefined): boolean {
+  if (!url) return false
+  return (
+    url === '/auth' ||
+    url.startsWith('/auth/login') ||
+    url.startsWith('/auth/forgot-password') ||
+    url.startsWith('/auth/reset-password') ||
+    url.startsWith('/auth/refresh')
+  )
+}
+
+api.interceptors.request.use((config) => {
+  if (typeof window === 'undefined') return config
+  if (isPublicAuthPath(config.url)) {
+    return config
+  }
+  const token = getAccessToken()
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
 })
 
 let isRefreshing = false
@@ -29,6 +52,24 @@ function processQueue(error: unknown, token: string | null = null) {
     }
   })
   failedQueue = []
+}
+
+async function refreshSession(): Promise<void> {
+  const base = api.defaults.baseURL ?? ''
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) {
+    throw new Error('Sem refresh token')
+  }
+
+  const { data } = await axios.post<{
+    data: { accessToken: string; refreshToken: string }
+  }>(`${base}/auth/refresh`, { refreshToken }, { withCredentials: true })
+
+  const payload = data?.data
+  if (!payload?.accessToken || !payload?.refreshToken) {
+    throw new Error('Resposta de refresh inválida')
+  }
+  setAuthTokens(payload.accessToken, payload.refreshToken)
 }
 
 api.interceptors.response.use(
@@ -50,11 +91,7 @@ api.interceptors.response.use(
       isRefreshing = true
 
       try {
-        await axios.post(
-          `${api.defaults.baseURL}/auth/refresh`,
-          {},
-          { withCredentials: true }
-        )
+        await refreshSession()
         processQueue(null, 'ok')
         return api(originalRequest)
       } catch (refreshError) {

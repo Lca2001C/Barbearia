@@ -11,6 +11,7 @@ import {
 import api from '@/lib/api'
 import {
   clearTokens,
+  setAuthTokens,
   setUser as storeUser,
   type User,
 } from '@/lib/auth'
@@ -61,9 +62,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (identifier: string, password: string) => {
       const { data } = await api.post('/auth/login', { identifier, password })
-      const { user: userData } = data.data
+      const { user: userData, accessToken, refreshToken } = data.data
       setUser(userData)
       storeUser(userData)
+      if (accessToken && refreshToken) {
+        setAuthTokens(accessToken, refreshToken)
+      }
       toast.success('Login realizado com sucesso!')
     },
     []
@@ -86,9 +90,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         username,
         confirmPassword: confirmPassword ?? password,
       })
-      const { user: userData } = data.data
+      const { user: userData, accessToken, refreshToken } = data.data
       setUser(userData)
       storeUser(userData)
+      if (accessToken && refreshToken) {
+        setAuthTokens(accessToken, refreshToken)
+      }
       toast.success('Conta criada com sucesso!')
     },
     []
@@ -101,6 +108,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = useCallback(async (token: string, password: string) => {
     await api.post('/auth/reset-password', { token, password })
+    clearTokens()
+    setUser(null)
     toast.success('Senha redefinida com sucesso! Faça login novamente.')
   }, [])
 
