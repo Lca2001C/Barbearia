@@ -11,6 +11,8 @@ import {
 import api from '@/lib/api'
 import {
   clearTokens,
+  getAccessToken,
+  getRefreshToken,
   setAuthTokens,
   setUser as storeUser,
   type User,
@@ -44,6 +46,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAuthenticated = !!user
 
   const fetchUser = useCallback(async () => {
+    if (!getAccessToken() && !getRefreshToken()) {
+      setUser(null)
+      return
+    }
     try {
       const { data } = await api.get('/users/me')
       const userData = data.data

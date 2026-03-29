@@ -81,6 +81,10 @@ api.interceptors.response.use(
     const shouldSkipRefresh = isAuthRoute || originalRequest?._skipRefresh
 
     if (error.response?.status === 401 && !originalRequest?._retry && !shouldSkipRefresh) {
+      if (!getRefreshToken()) {
+        return Promise.reject(error)
+      }
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
@@ -98,7 +102,15 @@ api.interceptors.response.use(
         processQueue(refreshError, null)
         clearTokens()
         if (typeof window !== 'undefined') {
-          window.location.href = '/login'
+          const path = window.location.pathname
+          const onAuthPage =
+            path === '/login' ||
+            path === '/register' ||
+            path.startsWith('/forgot-password') ||
+            path.startsWith('/reset-password')
+          if (!onAuthPage) {
+            window.location.href = '/login'
+          }
         }
         return Promise.reject(refreshError)
       } finally {
